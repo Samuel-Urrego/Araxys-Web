@@ -1,0 +1,131 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Payload Sanitization" activeNav="sanitization" description="Automatic SQL injection detection and XSS stripping with recursive payload scanning.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys automatically scrubs every incoming request payload for <strong>SQL injection</strong> and <strong>XSS</strong> attacks before your business logic executes. The sanitization middleware intercepts request bodies, query parameters, and headers — scanning them recursively through nested JSON structures.
+  </p>
+
+  <h2 id="detection-strategy">Detection Strategy</h2>
+  <p>Araxys uses two different strategies depending on the attack type:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Attack Type</th>
+        <th>Patterns</th>
+        <th>Action</th>
+        <th>HTTP Response</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>SQL Injection</strong></td>
+        <td>16 regex patterns</td>
+        <td><strong>Block</strong> — reject entire request</td>
+        <td><code>400 Bad Request</code></td>
+      </tr>
+      <tr>
+        <td><strong>XSS</strong></td>
+        <td>9 regex patterns</td>
+        <td><strong>Strip</strong> — remove malicious content via bleach</td>
+        <td>Request proceeds (cleaned)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      Design Decision
+    </div>
+    <div class="alert-content">
+      SQLi attempts are <strong>blocked entirely</strong> because they target your database — allowing a "cleaned" query through is too risky. XSS payloads are <strong>stripped</strong> because bleach can safely remove malicious HTML while preserving legitimate content.
+    </div>
+  </div>
+
+  <h2 id="sqli-patterns">SQL Injection Patterns</h2>
+  <p>Araxys detects 16 SQLi patterns including:</p>
+  <ul>
+    <li><strong>UNION-based</strong>: <code>UNION SELECT</code>, <code>UNION ALL SELECT</code></li>
+    <li><strong>Boolean-based blind</strong>: <code>OR 1=1</code>, <code>AND 1=1</code></li>
+    <li><strong>Time-based blind</strong>: <code>SLEEP()</code>, <code>WAITFOR DELAY</code>, <code>BENCHMARK()</code></li>
+    <li><strong>Stacked queries</strong>: <code>; DROP TABLE</code>, <code>; DELETE FROM</code></li>
+    <li><strong>Comment injection</strong>: <code>--</code>, <code>/**/</code></li>
+    <li><strong>Function abuse</strong>: <code>LOAD_FILE()</code>, <code>INTO OUTFILE</code></li>
+  </ul>
+
+  <h2 id="xss-patterns">XSS Patterns</h2>
+  <p>Araxys detects and strips 9 XSS vectors:</p>
+  <ul>
+    <li><strong>Script tags</strong>: <code>&lt;script&gt;</code> in all variations</li>
+    <li><strong>Event handlers</strong>: <code>onerror</code>, <code>onload</code>, <code>onclick</code>, etc.</li>
+    <li><strong>JavaScript URIs</strong>: <code>javascript:</code> protocol</li>
+    <li><strong>Data URIs</strong>: <code>data:text/html</code> payloads</li>
+    <li><strong>Iframe injection</strong>: <code>&lt;iframe&gt;</code> tags</li>
+    <li><strong>SVG/math payloads</strong>: <code>&lt;svg onload=...&gt;</code></li>
+  </ul>
+
+  <h2 id="recursive-scanning">Recursive Scanning</h2>
+  <p>
+    The scanner traverses nested JSON payloads recursively up to a configurable depth limit. This catches attacks hidden deep within nested objects:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">json</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`{
+  "user": {
+    "profile": {
+      "bio": "&lt;script&gt;alert('xss')&lt;/script&gt;"  <span class="token-comment">// ← caught at depth 3</span>
+    }
+  }
+}`} /></pre>
+  </div>
+
+  <h2 id="configuration">Configuration</h2>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> SanitizeConfig
+
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"..."</span>,
+    <span class="token-param">sanitize</span>=<span class="token-function">SanitizeConfig</span>(
+        <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+        <span class="token-param">block_sqli</span>=<span class="token-bool">True</span>,
+        <span class="token-param">strip_xss</span>=<span class="token-bool">True</span>,
+        <span class="token-param">max_depth</span>=<span class="token-number">10</span>,
+        <span class="token-param">exclude_paths</span>=[<span class="token-string">"/upload"</span>],  <span class="token-comment"># Skip file upload endpoints</span>
+    ),
+)</code></pre>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable/disable sanitization</td></tr>
+      <tr><td><code>block_sqli</code></td><td><code>bool</code></td><td><code>True</code></td><td>Block SQL injection attempts</td></tr>
+      <tr><td><code>strip_xss</code></td><td><code>bool</code></td><td><code>True</code></td><td>Strip XSS payloads</td></tr>
+      <tr><td><code>max_depth</code></td><td><code>int</code></td><td><code>10</code></td><td>Max recursion depth for nested scanning (≥1)</td></tr>
+      <tr><td><code>exclude_paths</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>Paths excluded from sanitization</td></tr>
+    </tbody>
+  </table>
+
+</DocsLayout>

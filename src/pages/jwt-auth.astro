@@ -1,0 +1,147 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="JWT & Token Rotation" activeNav="jwt-auth" description="Access + Refresh token pairs with JTI-based revocation, replay detection, and scope embedding.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys implements a full <strong>OAuth2-compliant JWT system</strong> with access and refresh token pairs. It includes JTI (JWT ID) based revocation, automatic token rotation, and replay attack detection.
+  </p>
+
+  <h2 id="token-flow">Token Flow</h2>
+  <ol>
+    <li><strong>Login</strong>: User authenticates → server issues an access + refresh token pair.</li>
+    <li><strong>Access</strong>: Client sends the access token in the <code>Authorization: Bearer</code> header.</li>
+    <li><strong>Expiration</strong>: Access token expires (default: 30 minutes).</li>
+    <li><strong>Rotation</strong>: Client sends the refresh token → server issues NEW pair, blacklists the old refresh token.</li>
+    <li><strong>Replay Detection</strong>: If someone tries to reuse the old refresh token, Araxys detects it as a replay attack.</li>
+  </ol>
+
+  <div class="alert">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">security</span>
+      Replay Attack Protection
+    </div>
+    <div class="alert-content">
+      Each refresh token has a unique JTI (JWT ID). When rotated, the old JTI is added to a blacklist. Attempting to reuse a blacklisted refresh token triggers a <code>TOKEN_REVOKED</code> audit event — a clear sign of token theft.
+    </div>
+  </div>
+
+  <h2 id="usage">Usage</h2>
+
+  <h3 id="issuing-tokens">Issuing Token Pairs</h3>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> Scope
+
+<span class="token-decorator">@app.post</span>(<span class="token-string">"/auth/login"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">login</span>(<span class="token-param">username</span>: <span class="token-builtin">str</span>, <span class="token-param">password</span>: <span class="token-builtin">str</span>):
+    <span class="token-comment"># ... validate credentials ...</span>
+    pair = <span class="token-keyword">await</span> shield.jwt_manager.<span class="token-function">create_token_pair</span>(
+        <span class="token-param">subject</span>=user.id,
+        <span class="token-param">scopes</span>=[Scope.READ, Scope.WRITE],
+    )
+    <span class="token-keyword">return</span> pair.<span class="token-function">model_dump</span>()</code></pre>
+  </div>
+
+  <h3 id="rotating-tokens">Rotating Tokens</h3>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-decorator">@app.post</span>(<span class="token-string">"/auth/refresh"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">refresh</span>(<span class="token-param">refresh_token</span>: <span class="token-builtin">str</span>):
+    <span class="token-comment"># Old refresh token is automatically blacklisted</span>
+    new_pair = <span class="token-keyword">await</span> shield.jwt_manager.<span class="token-function">rotate_tokens</span>(refresh_token)
+    <span class="token-keyword">return</span> new_pair.<span class="token-function">model_dump</span>()</code></pre>
+  </div>
+
+  <h3 id="protecting-endpoints">Protecting Endpoints</h3>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> Depends
+<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> Scope
+<span class="token-keyword">from</span> araxys.jwt_auth.dependencies <span class="token-keyword">import</span> require_jwt
+<span class="token-keyword">from</span> araxys.jwt_auth.tokens <span class="token-keyword">import</span> TokenPayload
+
+<span class="token-decorator">@app.get</span>(<span class="token-string">"/profile"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">profile</span>(
+    <span class="token-param">user</span>: TokenPayload = <span class="token-function">Depends</span>(
+        <span class="token-function">require_jwt</span>(Scope.READ, <span class="token-param">jwt_manager</span>=shield.jwt_manager)
+    ),
+):
+    <span class="token-keyword">return</span> {"user_id": user.sub, "scopes": user.scopes}`} /></pre>
+  </div>
+
+  <h2 id="configuration">Configuration</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>algorithm</code></td><td><code>str</code></td><td><code>"HS256"</code></td><td>JWT signing algorithm</td></tr>
+      <tr><td><code>access_token_ttl_minutes</code></td><td><code>int</code></td><td><code>30</code></td><td>Access token time-to-live (≥1)</td></tr>
+      <tr><td><code>refresh_token_ttl_days</code></td><td><code>int</code></td><td><code>7</code></td><td>Refresh token time-to-live (≥1)</td></tr>
+      <tr><td><code>issuer</code></td><td><code>str | None</code></td><td><code>None</code></td><td>JWT <code>iss</code> claim</td></tr>
+      <tr><td><code>audience</code></td><td><code>str | None</code></td><td><code>None</code></td><td>JWT <code>aud</code> claim</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="scopes">Permission Scopes</h2>
+  <p>Araxys provides three built-in scopes via the <code>Scope</code> enum:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Scope</th>
+        <th>Value</th>
+        <th>Use Case</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Scope.READ</code></td><td><code>"read"</code></td><td>Read-only access to resources</td></tr>
+      <tr><td><code>Scope.WRITE</code></td><td><code>"write"</code></td><td>Create and modify resources</td></tr>
+      <tr><td><code>Scope.ADMIN</code></td><td><code>"admin"</code></td><td>Administrative operations</td></tr>
+    </tbody>
+  </table>
+
+  <p>Scopes are embedded in the JWT payload and validated by the <code>require_jwt</code> dependency. If a token doesn't have the required scope, Araxys returns <code>403 Forbidden</code>.</p>
+
+  <h2 id="token-storage">Token Storage</h2>
+  <p>
+    JTI blacklisting requires persistent storage. Araxys auto-detects the backend:
+  </p>
+  <ul>
+    <li><strong>No Redis URL</strong> → <code>InMemoryTokenStorage</code> (development)</li>
+    <li><strong>Redis URL set</strong> → <code>RedisTokenStorage</code> (production)</li>
+  </ul>
+
+  <div class="alert alert--warning">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+      Production Note
+    </div>
+    <div class="alert-content">
+      In-memory token storage means blacklisted JTIs are lost on server restart. Use Redis in production to persist token revocation across deployments.
+    </div>
+  </div>
+
+</DocsLayout>

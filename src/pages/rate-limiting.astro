@@ -1,0 +1,170 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Dynamic Rate Limiting" activeNav="rate-limiting" description="Araxys rate limiting with sliding window counters, escalating bans, and configurable thresholds.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys provides a <strong>dynamic sliding window</strong> rate limiter that tracks requests per IP + endpoint. Unlike fixed-window counters, the sliding window prevents burst attacks at window boundaries and provides more accurate rate limiting.
+  </p>
+  <p>
+    When a client exceeds the configured threshold repeatedly, Araxys automatically applies <strong>escalating temporary bans</strong> — each violation increases the ban duration exponentially, discouraging persistent attackers.
+  </p>
+
+  <h2 id="how-it-works">How It Works</h2>
+
+  <h3 id="sliding-window">Sliding Window Algorithm</h3>
+  <p>
+    For each incoming request, Araxys maintains a counter per <code>IP:endpoint</code> pair. The window slides in real-time — as old entries expire, new ones are counted. This prevents the "thundering herd" problem that affects fixed-window rate limiters.
+  </p>
+
+  <h3 id="escalating-bans">Escalating Ban System</h3>
+  <p>
+    When a client exceeds <code>max_requests</code> within the window, a violation is recorded. After <code>ban_threshold</code> violations, the IP is temporarily banned. Each subsequent ban multiplies the duration by <code>escalation_multiplier</code>:
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Violation #</th>
+        <th>Ban Duration (multiplier: 2.0×)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>1st ban</td><td>300 seconds (5 min)</td></tr>
+      <tr><td>2nd ban</td><td>600 seconds (10 min)</td></tr>
+      <tr><td>3rd ban</td><td>1,200 seconds (20 min)</td></tr>
+      <tr><td>4th ban</td><td>2,400 seconds (40 min)</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="response-headers">Response Headers</h3>
+  <p>Every response includes rate limit headers so clients can self-regulate:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Header</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>X-RateLimit-Limit</code></td><td>Maximum requests per window</td></tr>
+      <tr><td><code>X-RateLimit-Remaining</code></td><td>Requests remaining in current window</td></tr>
+      <tr><td><code>X-RateLimit-Window</code></td><td>Window size in seconds</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="configuration">Configuration</h2>
+  <p>All fields are configured via the <code>RateLimitConfig</code> Pydantic model:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig, AraxysShield
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> RateLimitConfig
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">rate_limit</span>=<span class="token-function">RateLimitConfig</span>(
+            <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+            <span class="token-param">max_requests</span>=<span class="token-number">200</span>,
+            <span class="token-param">window_seconds</span>=<span class="token-number">120</span>,
+            <span class="token-param">ban_threshold</span>=<span class="token-number">10</span>,
+            <span class="token-param">ban_duration_seconds</span>=<span class="token-number">600</span>,
+            <span class="token-param">escalation_multiplier</span>=<span class="token-number">3.0</span>,
+            <span class="token-param">exclude_paths</span>=[<span class="token-string">"/docs"</span>, <span class="token-string">"/healthz"</span>],
+        ),
+    ),
+)</code></pre>
+  </div>
+
+  <h3 id="config-reference">Configuration Reference</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable/disable the rate limiting module</td></tr>
+      <tr><td><code>window_seconds</code></td><td><code>int</code></td><td><code>60</code></td><td>Sliding window size in seconds (≥1)</td></tr>
+      <tr><td><code>max_requests</code></td><td><code>int</code></td><td><code>100</code></td><td>Max requests per window (≥1)</td></tr>
+      <tr><td><code>ban_threshold</code></td><td><code>int</code></td><td><code>5</code></td><td>Violations before temporary ban (≥1)</td></tr>
+      <tr><td><code>ban_duration_seconds</code></td><td><code>int</code></td><td><code>300</code></td><td>Initial ban duration in seconds (≥1)</td></tr>
+      <tr><td><code>escalation_multiplier</code></td><td><code>float</code></td><td><code>2.0</code></td><td>Ban duration multiplier per violation (≥1.0)</td></tr>
+      <tr><td><code>exclude_paths</code></td><td><code>list[str]</code></td><td><code>["/docs", "/redoc", "/openapi.json", "/healthz"]</code></td><td>Paths excluded from rate limiting</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="backends">Storage Backends</h2>
+  <p>
+    Araxys uses a <strong>Protocol-based backend system</strong>. The library ships with <code>InMemoryBackend</code> (default) and <code>RedisBackend</code> (for production multi-worker deployments).
+  </p>
+
+  <div class="alert alert--warning">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+      Production Note
+    </div>
+    <div class="alert-content">
+      The <code>InMemoryBackend</code> is <strong>per-process</strong>. In multi-worker deployments (Gunicorn, Uvicorn workers), each worker has its own counter. Use <code>RedisBackend</code> for shared state across workers.
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Araxys auto-detects the backend from config:</span>
+<span class="token-comment"># - If redis_url is set → RedisBackend</span>
+<span class="token-comment"># - Otherwise → InMemoryBackend</span>
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"..."</span>,
+        <span class="token-param">redis_url</span>=<span class="token-string">"redis://localhost:6379"</span>,  <span class="token-comment"># Enables Redis backend</span>
+    ),
+)</code></pre>
+  </div>
+
+  <h3 id="custom-backend">Custom Backend</h3>
+  <p>You can implement your own backend by satisfying the <code>RateLimitBackend</code> protocol:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys.rate_limit.backends <span class="token-keyword">import</span> RateLimitBackend
+
+<span class="token-keyword">class</span> <span class="token-class">PostgresBackend</span>:
+    <span class="token-string">"""Custom backend that stores counters in PostgreSQL."""</span>
+
+    <span class="token-keyword">async def</span> <span class="token-function">increment</span>(<span class="token-param">self</span>, <span class="token-param">key</span>: <span class="token-builtin">str</span>, <span class="token-param">window</span>: <span class="token-builtin">int</span>) -> <span class="token-builtin">int</span>:
+        <span class="token-comment"># Your implementation</span>
+        ...
+
+    <span class="token-keyword">async def</span> <span class="token-function">is_banned</span>(<span class="token-param">self</span>, <span class="token-param">ip</span>: <span class="token-builtin">str</span>) -> <span class="token-builtin">bool</span>:
+        ...
+
+    <span class="token-keyword">async def</span> <span class="token-function">ban</span>(<span class="token-param">self</span>, <span class="token-param">ip</span>: <span class="token-builtin">str</span>, <span class="token-param">duration</span>: <span class="token-builtin">int</span>) -> <span class="token-keyword">None</span>:
+        ...
+
+<span class="token-comment"># Pass it to the shield</span>
+shield = <span class="token-function">AraxysShield</span>(app, config, <span class="token-param">rate_limit_backend</span>=<span class="token-function">PostgresBackend</span>())</code></pre>
+  </div>
+
+</DocsLayout>

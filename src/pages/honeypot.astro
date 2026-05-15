@@ -1,0 +1,120 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Honeypot Endpoints" activeNav="honeypot" description="Deploy deceptive routes to detect and auto-ban malicious bots and crawlers.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys deploys <strong>deceptive routes</strong> that look like juicy targets — admin panels, configuration files, version control — to identify and ban malicious crawlers before they discover your real assets.
+  </p>
+  <p>
+    When a bot accesses a honeypot route, Araxys returns a <strong>200 OK</strong> with fake content (so the bot doesn't know it's been detected) and <strong>immediately bans the IP</strong> across ALL endpoints. The event is recorded in the audit log.
+  </p>
+
+  <div class="alert">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">security</span>
+      Security Strategy
+    </div>
+    <div class="alert-content">
+      Legitimate users never access routes like <code>/wp-admin</code> or <code>/.env</code>. Any request to these paths is a clear indicator of automated reconnaissance. Honeypots turn this against the attacker.
+    </div>
+  </div>
+
+  <h2 id="how-it-works">How It Works</h2>
+  <ol>
+    <li><strong>Registration</strong>: <code>HoneypotTrap</code> registers fake routes on your FastAPI app during initialization.</li>
+    <li><strong>Detection</strong>: When any IP hits a honeypot path, the trap handler fires.</li>
+    <li><strong>Response</strong>: Returns HTTP <code>200</code> with fake content (configurable status code).</li>
+    <li><strong>Ban</strong>: The IP is immediately banned using the shared rate-limit backend.</li>
+    <li><strong>Enforcement</strong>: <code>HoneypotMiddleware</code> checks every subsequent request against the ban list.</li>
+    <li><strong>Audit</strong>: A <code>HONEYPOT_TRIGGERED</code> event is logged with the IP and path details.</li>
+  </ol>
+
+  <h2 id="default-paths">Default Honeypot Paths</h2>
+  <p>Araxys ships with paths commonly targeted by bots and vulnerability scanners:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Path</th>
+        <th>Mimics</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>/admin/config</code></td><td>Admin configuration panel</td></tr>
+      <tr><td><code>/wp-admin</code></td><td>WordPress admin dashboard</td></tr>
+      <tr><td><code>/wp-login.php</code></td><td>WordPress login page</td></tr>
+      <tr><td><code>/.env</code></td><td>Environment variables file</td></tr>
+      <tr><td><code>/.git/config</code></td><td>Git repository configuration</td></tr>
+      <tr><td><code>/phpmyadmin</code></td><td>phpMyAdmin interface</td></tr>
+      <tr><td><code>/server-status</code></td><td>Apache server status page</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="configuration">Configuration</h2>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig, AraxysShield
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> HoneypotConfig
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">honeypot</span>=<span class="token-function">HoneypotConfig</span>(
+            <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+            <span class="token-param">paths</span>=[
+                <span class="token-string">"/admin"</span>,
+                <span class="token-string">"/wp-login.php"</span>,
+                <span class="token-string">"/.git/config"</span>,
+                <span class="token-string">"/api/v1/debug"</span>,  <span class="token-comment"># Custom path</span>
+            ],
+            <span class="token-param">ban_duration_seconds</span>=<span class="token-number">7200</span>,  <span class="token-comment"># 2 hours</span>
+            <span class="token-param">fake_response_code</span>=<span class="token-number">200</span>,
+        ),
+    ),
+)</code></pre>
+  </div>
+
+  <h3 id="config-reference">Configuration Reference</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable/disable the honeypot module</td></tr>
+      <tr><td><code>paths</code></td><td><code>list[str]</code></td><td>7 common paths</td><td>Fake paths that trigger an automatic IP ban</td></tr>
+      <tr><td><code>ban_duration_seconds</code></td><td><code>int</code></td><td><code>3600</code></td><td>How long a honeypot-triggered IP stays banned (≥1)</td></tr>
+      <tr><td><code>fake_response_code</code></td><td><code>int</code></td><td><code>200</code></td><td>HTTP status code returned to the bot (200 to avoid alerting)</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="integration">Integration with Other Modules</h2>
+  <p>
+    The honeypot module shares the <strong>same ban backend</strong> as the rate limiter. This means a bot caught by a honeypot is banned from ALL endpoints — not just the honeypot routes. The ban is enforced at the middleware level, before your route handlers execute.
+  </p>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">lightbulb</span>
+      Audit Integration
+    </div>
+    <div class="alert-content">
+      Every honeypot trigger generates a <code>HONEYPOT_TRIGGERED</code> audit event with the attacker's IP, the path they accessed, and a timestamp. If audit encryption is enabled, this data is encrypted with AES-256-GCM.
+    </div>
+  </div>
+
+</DocsLayout>

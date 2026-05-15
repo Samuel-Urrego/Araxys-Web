@@ -1,0 +1,249 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Introduction" activeNav="introduction" description="Araxys — Plug & Play Security for FastAPI. Enterprise-grade protection with three lines of code.">
+
+  <!-- Hero -->
+  <div class="not-prose mb-12">
+    <div class="flex items-center gap-3 mb-6">
+      <img src="/araxyslogo-nobg.png" alt="Araxys Logo" class="h-20 w-auto logo-invert" />
+      <div>
+        <h1 class="headline-lg text-text-primary">Araxys</h1>
+        <p class="text-sm text-text-muted" style="font-family: var(--font-code)">Plug & Play Security for FastAPI</p>
+      </div>
+    </div>
+
+    <p class="body-lg text-text-secondary max-w-2xl mb-8">
+      Enterprise-grade security for your FastAPI applications with <strong class="text-text-primary">zero boilerplate</strong>. Rate limiting, honeypots, JWT, API keys, sanitization, encrypted audit logging — all in <strong class="text-text-primary">three lines of code</strong>.
+    </p>
+
+    <!-- Install command -->
+    <div class="code-block mb-8">
+      <div class="code-block-header">
+        <span class="code-block-lang">terminal</span>
+        <button class="code-block-copy">Copy</button>
+      </div>
+      <pre><code><span class="token-comment"># Install with pip</span>
+<span class="token-function">pip</span> install araxys
+
+<span class="token-comment"># Or with uv (recommended)</span>
+<span class="token-function">uv</span> add araxys</code></pre>
+    </div>
+
+    <!-- Quick start -->
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="code-block-lang">python</span>
+        <button class="code-block-copy">Copy</button>
+      </div>
+      <pre><code><span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> FastAPI
+<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysShield, AraxysConfig
+
+app = <span class="token-function">FastAPI</span>()
+shield = <span class="token-function">AraxysShield</span>(app, <span class="token-function">AraxysConfig</span>(<span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>))
+<span class="token-comment"># That's it. Your API is now protected.</span></code></pre>
+    </div>
+  </div>
+
+  <h2 id="what-is-araxys">What is Araxys?</h2>
+  <p>
+    <strong>Araxys</strong> is a comprehensive security library for <a href="https://fastapi.tiangolo.com/" target="_blank" rel="noopener">FastAPI</a> that provides enterprise-grade protection with a plug & play architecture. In an era of increasingly sophisticated automated attacks, Araxys acts as your application's first responder.
+  </p>
+  <p>
+    By leveraging advanced heuristics and pre-defined security patterns, it eliminates the "human error" element of security configuration. Every incoming request is automatically scrubbed, rate-limited, and monitored — before your business logic ever executes.
+  </p>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      Key Principle
+    </div>
+    <div class="alert-content">
+      Araxys uses <strong>Protocol-based backends</strong> (structural subtyping) for all storage — you can plug in your own database, Redis, or any custom backend without modifying library code.
+    </div>
+  </div>
+
+  <h2 id="modules">Security Modules</h2>
+  <p>Araxys ships with 7 production-ready modules, each independently configurable:</p>
+
+  <div class="not-prose grid grid-cols-1 sm:grid-cols-2 gap-3 my-6">
+    <a href="/rate-limiting" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">traffic</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Rate Limiting</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Dynamic sliding window with escalating bans and X-RateLimit headers.</p>
+    </a>
+
+    <a href="/honeypot" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">humidity_mid</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Honeypot Endpoints</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Fake routes that auto-ban bots and crawlers on contact.</p>
+    </a>
+
+    <a href="/api-keys" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">vpn_key</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">API Keys</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Scoped keys with SHA-256 hashing, expiration, and pluggable storage.</p>
+    </a>
+
+    <a href="/jwt-auth" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">confirmation_number</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">JWT & Token Rotation</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Access + Refresh tokens with JTI blacklisting and replay detection.</p>
+    </a>
+
+    <a href="/sanitization" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">cleaning_services</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Sanitization</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">16 SQLi patterns + 9 XSS patterns with recursive scanning.</p>
+    </a>
+
+    <a href="/audit-logging" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">list_alt</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Audit Logging</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">AES-256-GCM encrypted structured logs via structlog.</p>
+    </a>
+  </div>
+
+  <h2 id="installation">Installation</h2>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">terminal</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Core (in-memory backends)</span>
+<span class="token-function">pip</span> install araxys
+
+<span class="token-comment"># With Redis support (recommended for production)</span>
+<span class="token-function">pip</span> install araxys[redis]
+
+<span class="token-comment"># Development</span>
+<span class="token-function">pip</span> install araxys[dev]</code></pre>
+  </div>
+
+  <div class="alert">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+      Requirement
+    </div>
+    <div class="alert-content">
+      Araxys requires <strong>Python 3.13+</strong> and <strong>FastAPI 0.115+</strong> with <strong>Pydantic v2</strong>.
+    </div>
+  </div>
+
+  <h2 id="full-protection">Full Protection Setup</h2>
+  <p>Enable all modules with a single configuration object:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> FastAPI
+<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysShield, AraxysConfig
+
+app = <span class="token-function">FastAPI</span>()
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"super-secret-key-at-least-32-chars!"</span>,
+        <span class="token-param">redis_url</span>=<span class="token-string">"redis://localhost:6379"</span>,  <span class="token-comment"># Optional — omit for in-memory</span>
+        <span class="token-param">rate_limit</span>={"window_seconds": <span class="token-number">60</span>, "max_requests": <span class="token-number">100</span>},
+        <span class="token-param">honeypot</span>={"paths": [<span class="token-string">"/admin/config"</span>, <span class="token-string">"/wp-admin"</span>, <span class="token-string">"/.env"</span>]},
+        <span class="token-param">secure_headers</span>=<span class="token-bool">True</span>,
+        <span class="token-param">sanitize</span>=<span class="token-bool">True</span>,
+        <span class="token-param">audit</span>={"encrypt": <span class="token-bool">True</span>, "log_file": <span class="token-string">"audit.log"</span>},
+    ),
+)`} /></pre>
+  </div>
+
+  <h2 id="architecture">Architecture Overview</h2>
+  <p>Araxys follows a modular architecture where each security concern is isolated in its own subpackage. The <code>AraxysShield</code> orchestrator wires everything together and registers ASGI middleware in the correct order.</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">text</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code>src/araxys/
+├── core/               <span class="token-comment"># Config, exceptions, shared types</span>
+│   ├── config.py       <span class="token-comment"># Pydantic Settings (env var support)</span>
+│   ├── exceptions.py   <span class="token-comment"># Custom exception hierarchy</span>
+│   └── types.py        <span class="token-comment"># Scope, AuditEntry, SecurityContext</span>
+├── rate_limit/         <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">traffic</span> Dynamic rate limiting</span>
+│   ├── backends.py     <span class="token-comment"># Protocol + InMemory + Redis</span>
+│   ├── limiter.py      <span class="token-comment"># Sliding window + escalation</span>
+│   └── middleware.py   <span class="token-comment"># ASGI middleware</span>
+├── honeypot/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">humidity_mid</span> Trap endpoints</span>
+│   ├── trap.py         <span class="token-comment"># Route registration + auto-ban</span>
+│   └── middleware.py   <span class="token-comment"># IP ban enforcement</span>
+├── api_keys/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">vpn_key</span> API Key management</span>
+│   ├── models.py       <span class="token-comment"># Pydantic models</span>
+│   ├── manager.py      <span class="token-comment"># CRUD + verification</span>
+│   ├── storage.py      <span class="token-comment"># Protocol + InMemory</span>
+│   └── dependencies.py <span class="token-comment"># FastAPI dependencies</span>
+├── jwt_auth/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">confirmation_number</span> JWT tokens</span>
+│   ├── tokens.py       <span class="token-comment"># Create, decode, rotate</span>
+│   ├── storage.py      <span class="token-comment"># JTI blacklisting</span>
+│   └── dependencies.py <span class="token-comment"># FastAPI dependencies</span>
+├── headers/            <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">shield</span> Security headers</span>
+│   └── middleware.py   <span class="token-comment"># HSTS, CSP, X-Frame-Options</span>
+├── sanitize/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">cleaning_services</span> Input sanitization</span>
+│   ├── patterns.py     <span class="token-comment"># SQLi + XSS regex patterns</span>
+│   ├── filters.py      <span class="token-comment"># Detection + stripping</span>
+│   └── middleware.py   <span class="token-comment"># ASGI middleware</span>
+├── audit/              <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">list_alt</span> Audit logging</span>
+│   ├── encryption.py   <span class="token-comment"># AES-256-GCM + PBKDF2</span>
+│   ├── logger.py       <span class="token-comment"># Structured logger</span>
+│   └── events.py       <span class="token-comment"># Event types</span>
+└── shield.py           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">bolt</span> Main orchestrator</span></code></pre>
+  </div>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">lightbulb</span>
+      Middleware Order Matters
+    </div>
+    <div class="alert-content">
+      ASGI middleware executes in <strong>reverse registration order</strong>. Araxys registers them inner→outer so the execution order is: <strong>Secure Headers → Honeypot → Rate Limit → Sanitize → Your Handler</strong>.
+    </div>
+  </div>
+
+  <h2 id="tech-stack">Tech Stack</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Technology</th>
+        <th>Role</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Python 3.13+</code></td><td>Runtime</td></tr>
+      <tr><td><code>FastAPI 0.115+</code></td><td>Web framework</td></tr>
+      <tr><td><code>Pydantic v2</code></td><td>Validation & configuration</td></tr>
+      <tr><td><code>PyJWT</code></td><td>JWT token handling</td></tr>
+      <tr><td><code>cryptography</code></td><td>AES-256-GCM encryption</td></tr>
+      <tr><td><code>structlog</code></td><td>Structured logging</td></tr>
+      <tr><td><code>bleach</code></td><td>XSS sanitization</td></tr>
+      <tr><td><code>Redis</code></td><td>Optional distributed backends</td></tr>
+      <tr><td><code>uv</code></td><td>Package management</td></tr>
+    </tbody>
+  </table>
+
+</DocsLayout>

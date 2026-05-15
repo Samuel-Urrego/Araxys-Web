@@ -1,0 +1,135 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Audit Logging" activeNav="audit-logging" description="AES-256-GCM encrypted structured audit logging with PBKDF2 key derivation and tamper detection.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys provides <strong>forensic-level audit logging</strong> with optional <strong>AES-256-GCM encryption</strong>. Every security event — rate limits, honeypot triggers, key operations, token rotations — is recorded with full context and structured output via <code>structlog</code>.
+  </p>
+
+  <h2 id="encryption">Encryption Architecture</h2>
+  <p>
+    When encryption is enabled, each log entry is individually encrypted using <strong>AES-256-GCM</strong> (Galois/Counter Mode), which provides both <strong>confidentiality</strong> (encryption) and <strong>integrity</strong> (authentication tag). This means any tampering with the log entry is immediately detectable.
+  </p>
+
+  <h3 id="key-derivation">Key Derivation</h3>
+  <p>
+    Araxys derives encryption keys using <strong>PBKDF2-HMAC-SHA256</strong> with <strong>480,000 iterations</strong> — following the <a href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html" target="_blank" rel="noopener">OWASP 2023 recommendation</a> for PBKDF2 with SHA-256.
+  </p>
+
+  <h3 id="per-entry-isolation">Per-Entry Isolation</h3>
+  <p>Each log entry gets its own unique:</p>
+  <ul>
+    <li><strong>Salt</strong> — random bytes used in PBKDF2 key derivation</li>
+    <li><strong>Nonce</strong> (IV) — random bytes used in AES-GCM encryption</li>
+  </ul>
+  <p>No two entries share the same key material. Compromising one entry's encryption provides zero advantage for decrypting others.</p>
+
+  <div class="alert">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">verified_user</span>
+      Tamper Detection
+    </div>
+    <div class="alert-content">
+      AES-256-GCM generates an <strong>authentication tag</strong> for each entry. If even a single byte of the ciphertext is modified, decryption fails with an integrity error. This makes log tampering immediately detectable.
+    </div>
+  </div>
+
+  <h2 id="event-types">Event Types</h2>
+  <p>Araxys tracks 13 distinct security event types via the <code>AuditEventType</code> enum:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Event Type</th>
+        <th>Trigger</th>
+        <th>Module</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>LOGIN_SUCCESS</code></td><td>Successful authentication</td><td>JWT</td></tr>
+      <tr><td><code>LOGIN_FAILED</code></td><td>Failed authentication attempt</td><td>JWT</td></tr>
+      <tr><td><code>RATE_LIMITED</code></td><td>Request blocked by rate limit</td><td>Rate Limit</td></tr>
+      <tr><td><code>HONEYPOT_TRIGGERED</code></td><td>Bot accessed a honeypot path</td><td>Honeypot</td></tr>
+      <tr><td><code>API_KEY_CREATED</code></td><td>New API key generated</td><td>API Keys</td></tr>
+      <tr><td><code>API_KEY_REVOKED</code></td><td>API key revoked</td><td>API Keys</td></tr>
+      <tr><td><code>API_KEY_VERIFIED</code></td><td>Valid key used successfully</td><td>API Keys</td></tr>
+      <tr><td><code>API_KEY_REJECTED</code></td><td>Invalid/expired/insufficient key</td><td>API Keys</td></tr>
+      <tr><td><code>TOKEN_ROTATED</code></td><td>Refresh token rotated for new pair</td><td>JWT</td></tr>
+      <tr><td><code>TOKEN_REVOKED</code></td><td>Token explicitly revoked</td><td>JWT</td></tr>
+      <tr><td><code>SANITIZATION_BLOCKED</code></td><td>SQLi/XSS detected and blocked</td><td>Sanitize</td></tr>
+      <tr><td><code>IP_BANNED</code></td><td>IP address temporarily banned</td><td>Rate Limit</td></tr>
+      <tr><td><code>IP_UNBANNED</code></td><td>IP ban expired</td><td>Rate Limit</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="audit-entry">AuditEntry Structure</h2>
+  <p>Each audit event is captured as an immutable <code>AuditEntry</code> dataclass:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-decorator">@dataclass</span>(<span class="token-param">frozen</span>=<span class="token-bool">True</span>, <span class="token-param">slots</span>=<span class="token-bool">True</span>)
+<span class="token-keyword">class</span> <span class="token-class">AuditEntry</span>:
+    <span class="token-param">event_type</span>: AuditEventType         <span class="token-comment"># What happened</span>
+    <span class="token-param">timestamp</span>: datetime                <span class="token-comment"># When (UTC)</span>
+    <span class="token-param">ip_address</span>: <span class="token-builtin">str</span> | <span class="token-keyword">None</span>            <span class="token-comment"># Source IP</span>
+    <span class="token-param">user_id</span>: <span class="token-builtin">str</span> | <span class="token-keyword">None</span>               <span class="token-comment"># Authenticated user</span>
+    <span class="token-param">api_key_prefix</span>: <span class="token-builtin">str</span> | <span class="token-keyword">None</span>        <span class="token-comment"># Key prefix (for key events)</span>
+    <span class="token-param">resource</span>: <span class="token-builtin">str</span> | <span class="token-keyword">None</span>              <span class="token-comment"># Affected resource/path</span>
+    <span class="token-param">action</span>: <span class="token-builtin">str</span> | <span class="token-keyword">None</span>                <span class="token-comment"># Action performed</span>
+    <span class="token-param">detail</span>: <span class="token-builtin">str</span> | <span class="token-keyword">None</span>                <span class="token-comment"># Human-readable detail</span>
+    <span class="token-param">metadata</span>: <span class="token-builtin">dict</span>[<span class="token-builtin">str</span>, Any]          <span class="token-comment"># Additional context</span>`} /></pre>
+  </div>
+
+  <h2 id="configuration">Configuration</h2>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig
+
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">audit</span>={
+        "enabled": <span class="token-bool">True</span>,
+        "encrypt": <span class="token-bool">True</span>,           <span class="token-comment"># Enable AES-256-GCM encryption</span>
+        "log_file": <span class="token-string">"/var/log/araxys/audit.log"</span>,
+    },
+)`} /></pre>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable/disable audit logging</td></tr>
+      <tr><td><code>encrypt</code></td><td><code>bool</code></td><td><code>True</code></td><td>Encrypt log entries with AES-256-GCM</td></tr>
+      <tr><td><code>log_file</code></td><td><code>str | None</code></td><td><code>None</code></td><td>File path for audit log output (None = stdout only)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">lightbulb</span>
+      Encryption Key
+    </div>
+    <div class="alert-content">
+      The encryption key is derived from your <code>secret_key</code> in <code>AraxysConfig</code>. Use a strong, unique key generated with <code>openssl rand -hex 32</code>. Never hardcode it in source control.
+    </div>
+  </div>
+
+</DocsLayout>

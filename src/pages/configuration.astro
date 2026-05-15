@@ -1,0 +1,151 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Configuration" activeNav="configuration" description="Complete configuration reference for all Araxys security modules with environment variable support.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys uses <strong>Pydantic Settings</strong> for configuration, which means every setting supports <strong>environment variables</strong> with the <code>ARAXYS_</code> prefix. You can configure Araxys programmatically, via environment variables, or a combination of both.
+  </p>
+
+  <h2 id="environment-variables">Environment Variables</h2>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">bash</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Required</span>
+<span class="token-keyword">export</span> <span class="token-param">ARAXYS_SECRET_KEY</span>=<span class="token-string">"your-production-secret-key-here!"</span>
+
+<span class="token-comment"># Optional — enables Redis backends</span>
+<span class="token-keyword">export</span> <span class="token-param">ARAXYS_REDIS_URL</span>=<span class="token-string">"redis://localhost:6379"</span></code></pre>
+  </div>
+
+  <h2 id="master-config">AraxysConfig (Master)</h2>
+  <p>The root configuration object that contains all module configs:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Env Variable</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>secret_key</code></td><td><code>str</code></td><td><em>required</em></td><td><code>ARAXYS_SECRET_KEY</code></td><td>Master secret (min 32 chars) — used for JWT signing + audit encryption</td></tr>
+      <tr><td><code>redis_url</code></td><td><code>str | None</code></td><td><code>None</code></td><td><code>ARAXYS_REDIS_URL</code></td><td>Redis URL. If set, enables Redis backends for rate limiting + JWT.</td></tr>
+      <tr><td><code>rate_limit</code></td><td><code>RateLimitConfig</code></td><td>defaults</td><td>—</td><td>Rate limiting settings</td></tr>
+      <tr><td><code>honeypot</code></td><td><code>HoneypotConfig</code></td><td>defaults</td><td>—</td><td>Honeypot trap settings</td></tr>
+      <tr><td><code>jwt</code></td><td><code>JWTConfig</code></td><td>defaults</td><td>—</td><td>JWT token settings</td></tr>
+      <tr><td><code>secure_headers</code></td><td><code>SecureHeadersConfig</code></td><td>defaults</td><td>—</td><td>Security headers settings</td></tr>
+      <tr><td><code>sanitize</code></td><td><code>SanitizeConfig</code></td><td>defaults</td><td>—</td><td>Payload sanitization settings</td></tr>
+      <tr><td><code>audit</code></td><td><code>AuditConfig</code></td><td>defaults</td><td>—</td><td>Audit logging settings</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="full-example">Full Configuration Example</h2>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig, AraxysShield
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> (
+    RateLimitConfig,
+    HoneypotConfig,
+    JWTConfig,
+    SecureHeadersConfig,
+    SanitizeConfig,
+    AuditConfig,
+)
+
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"generate-with-openssl-rand-hex-32!"</span>,
+    <span class="token-param">redis_url</span>=<span class="token-string">"redis://localhost:6379"</span>,
+
+    <span class="token-param">rate_limit</span>=<span class="token-function">RateLimitConfig</span>(
+        <span class="token-param">max_requests</span>=<span class="token-number">200</span>,
+        <span class="token-param">window_seconds</span>=<span class="token-number">120</span>,
+        <span class="token-param">ban_threshold</span>=<span class="token-number">10</span>,
+        <span class="token-param">ban_duration_seconds</span>=<span class="token-number">600</span>,
+        <span class="token-param">escalation_multiplier</span>=<span class="token-number">3.0</span>,
+    ),
+
+    <span class="token-param">honeypot</span>=<span class="token-function">HoneypotConfig</span>(
+        <span class="token-param">paths</span>=[<span class="token-string">"/admin"</span>, <span class="token-string">"/wp-login.php"</span>, <span class="token-string">"/.git/config"</span>],
+        <span class="token-param">ban_duration_seconds</span>=<span class="token-number">7200</span>,
+    ),
+
+    <span class="token-param">jwt</span>=<span class="token-function">JWTConfig</span>(
+        <span class="token-param">access_token_ttl_minutes</span>=<span class="token-number">15</span>,
+        <span class="token-param">refresh_token_ttl_days</span>=<span class="token-number">30</span>,
+    ),
+
+    <span class="token-param">secure_headers</span>=<span class="token-function">SecureHeadersConfig</span>(
+        <span class="token-param">hsts_max_age</span>=<span class="token-number">31_536_000</span>,
+        <span class="token-param">content_security_policy</span>=<span class="token-string">"default-src 'self'"</span>,
+    ),
+
+    <span class="token-param">sanitize</span>=<span class="token-function">SanitizeConfig</span>(
+        <span class="token-param">max_depth</span>=<span class="token-number">15</span>,
+        <span class="token-param">exclude_paths</span>=[<span class="token-string">"/upload"</span>],
+    ),
+
+    <span class="token-param">audit</span>=<span class="token-function">AuditConfig</span>(
+        <span class="token-param">encrypt</span>=<span class="token-bool">True</span>,
+        <span class="token-param">log_file</span>=<span class="token-string">"/var/log/araxys/audit.log"</span>,
+    ),
+)
+
+shield = <span class="token-function">AraxysShield</span>(app, config)</code></pre>
+  </div>
+
+  <h2 id="secure-headers-config">Secure Headers Configuration</h2>
+  <p>The secure headers middleware injects OWASP-recommended security headers into every response:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Header</th>
+        <th>Default Value</th>
+        <th>Config Field</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Strict-Transport-Security</code></td><td><code>max-age=31536000; includeSubDomains</code></td><td><code>hsts_max_age</code>, <code>hsts_include_subdomains</code></td></tr>
+      <tr><td><code>X-Content-Type-Options</code></td><td><code>nosniff</code></td><td><code>content_type_nosniff</code></td></tr>
+      <tr><td><code>X-Frame-Options</code></td><td><code>DENY</code></td><td><code>frame_options</code></td></tr>
+      <tr><td><code>X-XSS-Protection</code></td><td><code>0</code> (disabled — modern best practice)</td><td>—</td></tr>
+      <tr><td><code>Referrer-Policy</code></td><td><code>strict-origin-when-cross-origin</code></td><td><code>referrer_policy</code></td></tr>
+      <tr><td><code>Content-Security-Policy</code></td><td>Not set (configurable)</td><td><code>content_security_policy</code></td></tr>
+      <tr><td><code>Permissions-Policy</code></td><td>Not set (configurable)</td><td><code>permissions_policy</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="production-recommendations">Production Recommendations</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Aspect</th>
+        <th>Recommendation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Backends</strong></td><td>Use Redis (<code>araxys[redis]</code>) for multi-worker deployments</td></tr>
+      <tr><td><strong>Secret Key</strong></td><td>Generate with <code>openssl rand -hex 32</code> — never hardcode</td></tr>
+      <tr><td><strong>API Key Storage</strong></td><td>Implement <code>APIKeyStorage</code> protocol with your database</td></tr>
+      <tr><td><strong>Audit Logs</strong></td><td>Enable encryption + write to a dedicated log file</td></tr>
+      <tr><td><strong>Rate Limits</strong></td><td>Tune <code>max_requests</code> per endpoint for your traffic patterns</td></tr>
+      <tr><td><strong>HTTPS</strong></td><td>Always deploy behind TLS — HSTS headers expect it</td></tr>
+    </tbody>
+  </table>
+
+</DocsLayout>
