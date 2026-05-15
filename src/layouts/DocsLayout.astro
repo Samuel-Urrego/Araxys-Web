@@ -23,6 +23,7 @@ const navSections = [
       { href: "/jwt-auth", icon: "confirmation_number", label: "JWT & Token Rotation", id: "jwt-auth" },
       { href: "/sanitization", icon: "cleaning_services", label: "Sanitization", id: "sanitization" },
       { href: "/audit-logging", icon: "list_alt", label: "Audit Logging", id: "audit-logging" },
+      { href: "/cli", icon: "terminal", label: "Araxys CLI", id: "cli" },
     ],
   },
   {
@@ -41,7 +42,8 @@ const navSections = [
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content={description} />
   <title>{title} — Araxys Docs</title>
-  <link rel="icon" type="image/png" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-32x32.png?v=2" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -61,10 +63,10 @@ const navSections = [
         </svg>
       </button>
       <a href="/" class="flex items-center gap-2.5">
-        <img src="/araxyslogo-nobg.png" alt="Araxys" class="h-9 w-auto logo-invert" />
+        <img src="/araxyslogo-nobg.png" alt="Araxys" class="h-12 w-auto logo-invert" />
         <span class="font-semibold text-text-primary text-[15px] tracking-tight" style="font-family: var(--font-headline)">Araxys</span>
       </a>
-      <span class="label-sm text-text-muted bg-surface-high px-2 py-0.5 rounded-sm hidden sm:inline-block">v0.1.0</span>
+      <span class="label-sm text-text-muted bg-surface-high px-2 py-0.5 rounded-sm hidden sm:inline-block">v0.2.1</span>
     </div>
 
     <div class="flex items-center gap-3">

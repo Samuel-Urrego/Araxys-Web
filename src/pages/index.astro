@@ -8,7 +8,7 @@ import '../styles/global.css';
   <!-- Hero -->
   <div class="not-prose mb-12">
     <div class="flex items-center gap-3 mb-6">
-      <img src="/araxyslogo-nobg.png" alt="Araxys Logo" class="h-20 w-auto logo-invert" />
+      <img src="/araxyslogo-nobg.png" alt="Araxys Logo" class="h-32 w-auto logo-invert" />
       <div>
         <h1 class="headline-lg text-text-primary">Araxys</h1>
         <p class="text-sm text-text-muted" style="font-family: var(--font-code)">Plug & Play Security for FastAPI</p>
@@ -115,6 +115,22 @@ shield = <span class="token-function">AraxysShield</span>(app, <span class="toke
         <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Audit Logging</span>
       </div>
       <p class="text-xs text-text-muted leading-relaxed">AES-256-GCM encrypted structured logs via structlog.</p>
+    </a>
+
+    <a href="/cli" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">terminal</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Araxys CLI</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Professional CLI for key management and security auditing.</p>
+    </a>
+
+    <a href="/configuration#redis" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">database</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Redis Persistence</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Scalable storage for API keys and rate limits across instances.</p>
     </a>
   </div>
 

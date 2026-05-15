@@ -1,0 +1,87 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Araxys CLI" activeNav="cli" description="Master the Araxys CLI to manage your security infrastructure from the terminal.">
+  <h1 class="headline-lg text-text-primary mb-4">Araxys CLI</h1>
+  <p class="body-lg text-text-secondary mb-8">
+    The Araxys CLI is a professional tool designed for high-stakes environments. It allows you to manage API keys, audit security logs, and configure your shields without touching a single line of code.
+  </p>
+
+  <div class="alert mb-8">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">terminal</span>
+      Zero-Configuration
+    </div>
+    <div class="alert-content">
+      The CLI automatically detects your environment variables (like <code>ARAXYS_REDIS_URL</code>) to connect to your production infrastructure.
+    </div>
+  </div>
+
+  <h2 id="getting-started">Getting Started</h2>
+  <p>Once you install Araxys with the <code>[cli]</code> extra (included by default in the main package), the <code>araxys</code> command becomes available in your terminal.</p>
+
+  <div class="code-block mb-8">
+    <div class="code-block-header">
+      <span class="code-block-lang">terminal</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Verify installation</span>
+<span class="token-function">araxys</span> --help</code></pre>
+  </div>
+
+  <h2 id="key-management">API Key Management</h2>
+  <p>The CLI is the recommended way to generate and manage API keys for your services. It handles hashing and prefixing automatically.</p>
+
+  <h3 class="text-text-primary mt-6 mb-3 font-semibold">Creating a New Key</h3>
+  <div class="code-block mb-4">
+    <div class="code-block-header">
+      <span class="code-block-lang">terminal</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-function">araxys</span> keys create --name "Production Frontend" --prefix "PFX"</code></pre>
+  </div>
+  <p class="text-sm text-text-muted mb-8 italic">
+    Note: The private key is shown ONLY ONCE. Araxys stores only the SHA-256 hash.
+  </p>
+
+  <h3 class="text-text-primary mt-6 mb-3 font-semibold">Listing Active Keys</h3>
+  <div class="code-block mb-8">
+    <div class="code-block-header">
+      <span class="code-block-lang">terminal</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-function">araxys</span> keys list</code></pre>
+  </div>
+
+  <h2 id="redis-persistence">Redis Infrastructure</h2>
+  <p>To use the CLI with remote persistence, ensure your Redis URL is exported in your environment:</p>
+  
+  <div class="code-block mb-8">
+    <div class="code-block-header">
+      <span class="code-block-lang">bash</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">export</span> <span class="token-variable">ARAXYS_REDIS_URL</span>=<span class="token-string">"redis://localhost:6379/0"</span></code></pre>
+  </div>
+
+  <h2 id="security-first">Security Protocols</h2>
+  <ul class="list-disc pl-5 space-y-4 text-text-secondary mb-12">
+    <li><strong>Masked Output:</strong> Secret values are never printed to the console unless explicitly requested with the <code>--reveal</code> flag.</li>
+    <li><strong>Audited Actions:</strong> Every CLI command generates an audit event that can be captured by the Araxys logger.</li>
+    <li><strong>Atomic Revocation:</strong> Revoking a key via CLI takes effect across all your microservices instantly when using the Redis backend.</li>
+  </ul>
+
+  <div class="not-prose mt-12 p-6 rounded-lg border border-primary/20 bg-primary/5">
+    <div class="flex items-start gap-4">
+      <span class="material-symbols-outlined text-primary">info</span>
+      <div>
+        <h4 class="text-text-primary font-semibold mb-1">Did you know?</h4>
+        <p class="text-sm text-text-muted leading-relaxed">
+          The Araxys CLI is built using <strong>Typer</strong>, ensuring a modern experience with auto-completion and beautiful help screens.
+        </p>
+      </div>
+    </div>
+  </div>
+</DocsLayout>
