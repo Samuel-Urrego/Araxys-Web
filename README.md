@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./public/araxyslogo-nobg.png" alt="Araxys Logo" width="120" />
+  <img src="./public/araxyslogo.png" alt="Araxys Logo" width="120" />
   <h1>Araxys Documentation</h1>
   <p>Official performance-optimized documentation for the Araxys security library.</p>
 
