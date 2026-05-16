@@ -1,0 +1,106 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="CORS Policy" activeNav="cors-policy" description="Per-origin allowlist with preflight handling and fail-closed default.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    The CORS middleware in Araxys is <strong>fail-closed</strong> — all cross-origin requests are denied unless the origin is explicitly
+    added to the allowlist. Preflight <code>OPTIONS</code> requests are handled automatically, and the middleware supports wildcard
+    subdomain patterns for flexible origin matching.
+  </p>
+
+  <h2 id="how-it-works">How It Works</h2>
+
+  <h3 id="fail-closed">Fail-Closed Architecture</h3>
+  <p>
+    If <code>allowed_origins</code> is empty (its default), <strong>every</strong> cross-origin request is rejected with
+    <code>403 Forbidden</code>. This ensures that forgetting to configure CORS results in a security block rather than
+    accidentally exposing your API to any origin. You must explicitly list every origin that should have access.
+  </p>
+
+  <h3 id="preflight">Automatic Preflight Handling</h3>
+  <p>
+    When a browser sends an <code>OPTIONS</code> preflight request, Araxys automatically responds with the appropriate
+    CORS headers and a <code>204 No Content</code> status. The <code>max_age</code> setting controls how long the browser
+    can cache the preflight result, reducing the number of OPTIONS requests for subsequent same-origin requests.
+  </p>
+
+  <h3 id="wildcard">Wildcard Subdomain Support</h3>
+  <p>
+    Origins can include wildcard patterns using the <code>*</code> character for subdomain matching. For example,
+    <code>*.example.com</code> matches <code>https://app.example.com</code>, <code>https://admin.example.com</code>,
+    and <code>https://dev.example.com</code>. Only the subdomain portion supports wildcards — the scheme and top-level
+    domain must match exactly.
+  </p>
+
+  <h2 id="configuration">Configuration</h2>
+  <p>Configure CORS via the <code>CORSConfig</code> model passed to <code>AraxysConfig.cors</code>:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig, AraxysShield
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> CORSConfig
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">cors</span>=<span class="token-function">CORSConfig</span>(
+            <span class="token-param">allowed_origins</span>=[
+                <span class="token-string">"https://app.example.com"</span>,
+                <span class="token-string">"https://admin.example.com"</span>,
+            ],
+            <span class="token-param">allowed_methods</span>=[<span class="token-string">"GET"</span>, <span class="token-string">"POST"</span>, <span class="token-string">"PUT"</span>, <span class="token-string">"DELETE"</span>],
+            <span class="token-param">max_age</span>=<span class="token-number">300</span>,
+        ),
+    ),
+)</code></pre>
+  </div>
+
+  <h3 id="config-reference">Configuration Reference</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>allowed_origins</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>Allowed origins (fail-closed if empty)</td></tr>
+      <tr><td><code>allowed_methods</code></td><td><code>list[str]</code></td><td><code>["GET","POST","PUT","DELETE","PATCH"]</code></td><td>Allowed HTTP methods</td></tr>
+      <tr><td><code>allowed_headers</code></td><td><code>list[str]</code></td><td><code>["Authorization","Content-Type","X-API-Key"]</code></td><td>Allowed request headers</td></tr>
+      <tr><td><code>max_age</code></td><td><code>int</code></td><td><code>600</code></td><td>Preflight cache TTL in seconds</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      Middleware Order
+    </div>
+    <div class="alert-content">
+      CORS executes <strong>first</strong> in the middleware chain — response headers must be set before any other middleware runs. Without early CORS header injection, browser clients may reject responses from downstream middleware due to missing <code>Access-Control-Allow-Origin</code>.
+    </div>
+  </div>
+
+  <h2 id="integration">Integration</h2>
+  <p>
+    The CORS module is integrated via the <code>AraxysConfig.cors</code> field. When <code>cors</code> is <code>None</code>
+    (the default), no CORS middleware is registered and the module is effectively disabled.
+  </p>
+  <p>
+    As the outermost middleware in the chain, CORS runs before all other modules — rate limiting, authentication,
+    IP access control, and the handler itself. This ensures that the browser receives CORS headers even when
+    downstream middleware rejects the request.
+  </p>
+
+</DocsLayout>

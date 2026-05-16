@@ -1,0 +1,155 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="IP Access Control" activeNav="ip-access-control" description="Allow, block, or hybrid modes with IPv4 and IPv6 CIDR support.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys provides three IP access control modes — <strong>allow</strong> (whitelist), <strong>block</strong> (blacklist),
+    and <strong>hybrid</strong> — using standard IPv4 and IPv6 CIDR notation. Blocked requests receive a
+    <code>403 Forbidden</code> response and are logged to the audit system.
+  </p>
+
+  <h2 id="how-it-works">How It Works</h2>
+
+  <h3 id="modes">Access Control Modes</h3>
+  <p>The three modes cover different security scenarios:</p>
+  <ul>
+    <li><strong>Allow mode</strong> — Only IPs matching the <code>allowed_ips</code> list are permitted. All others are rejected. Use this for internal admin panels or VPN-only access.</li>
+    <li><strong>Block mode</strong> — All IPs are allowed except those in <code>blocked_ips</code>. Use this to block known bad actors or specific geographic ranges.</li>
+    <li><strong>Hybrid mode</strong> — <code>blocked_ips</code> are checked first, then <code>allowed_ips</code> are evaluated. Allows nuanced rules like "block all traffic from <code>10.0.0.0/8</code> except my development machine."</li>
+  </ul>
+
+  <h3 id="cidr">CIDR Notation</h3>
+  <p>
+    Both IPv4 and IPv6 CIDR notation are fully supported. Valid patterns include:
+  </p>
+  <ul>
+    <li><code>10.0.0.0/8</code> — Entire 10.x.x.x private range</li>
+    <li><code>192.168.1.0/24</code> — Single subnet</li>
+    <li><code>203.0.113.42/32</code> — Single IP</li>
+    <li><code>2001:db8::/32</code> — IPv6 range</li>
+    <li><code>::1/128</code> — IPv6 loopback</li>
+  </ul>
+
+  <h3 id="hybrid-order">Hybrid Evaluation Order</h3>
+  <p>
+    In hybrid mode, <code>blocked_ips</code> are evaluated <strong>first</strong>, then <code>allowed_ips</code>.
+    If an IP appears in both lists, the allowlist takes priority — the specific IP is allowed while the broader
+    range remains blocked. This allows precise exceptions to wide block rules.
+  </p>
+
+  <h2 id="configuration">Configuration</h2>
+  <p>Configure IP access control via the <code>IPAccessConfig</code> model:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig, AraxysShield
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> IPAccessConfig
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">ip_access</span>=<span class="token-function">IPAccessConfig</span>(
+            <span class="token-param">mode</span>=<span class="token-string">"block"</span>,
+            <span class="token-param">blocked_ips</span>=[
+                <span class="token-string">"10.0.0.0/8"</span>,
+                <span class="token-string">"172.16.0.0/12"</span>,
+            ],
+        ),
+    ),
+)</code></pre>
+  </div>
+
+  <h3 id="config-reference">Configuration Reference</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>mode</code></td><td><code>"allow" | "block" | "hybrid"</code></td><td><code>"block"</code></td><td>Access control mode</td></tr>
+      <tr><td><code>allowed_ips</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>CIDR allowlist</td></tr>
+      <tr><td><code>blocked_ips</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>CIDR blocklist</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--warning">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+      CIDR Ordering
+    </div>
+    <div class="alert-content">
+      In hybrid mode, <code>blocked_ips</code> are evaluated <strong>before</strong> <code>allowed_ips</code>. An IP that matches both lists will be <strong>ALLOWED</strong> — the allowlist overrides the blocklist for that specific IP. This lets you create precise exceptions to broad block rules.
+    </div>
+  </div>
+
+  <h2 id="code-examples">Code Examples</h2>
+
+  <h3>Block Mode — Internal CIDRs</h3>
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code>ip_access = <span class="token-function">IPAccessConfig</span>(
+    <span class="token-param">mode</span>=<span class="token-string">"block"</span>,
+    <span class="token-param">blocked_ips</span>=[
+        <span class="token-string">"10.0.0.0/8"</span>,
+        <span class="token-string">"172.16.0.0/12"</span>,
+        <span class="token-string">"192.168.0.0/16"</span>,
+    ],
+)</code></pre>
+  </div>
+
+  <h3>Allow Mode — Office VPN CIDR</h3>
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code>ip_access = <span class="token-function">IPAccessConfig</span>(
+    <span class="token-param">mode</span>=<span class="token-string">"allow"</span>,
+    <span class="token-param">allowed_ips</span>=[
+        <span class="token-string">"203.0.113.0/24"</span>,  <span class="token-comment"># Office VPN range</span>
+        <span class="token-string">"198.51.100.42/32"</span>,  <span class="token-comment"># CI/CD runner</span>
+    ],
+)</code></pre>
+  </div>
+
+  <h3>Hybrid Mode — Allow Specific Dev IP</h3>
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code>ip_access = <span class="token-function">IPAccessConfig</span>(
+    <span class="token-param">mode</span>=<span class="token-string">"hybrid"</span>,
+    <span class="token-param">blocked_ips</span>=[<span class="token-string">"10.0.0.0/8"</span>],
+    <span class="token-param">allowed_ips</span>=[<span class="token-string">"10.0.0.5/32"</span>],  <span class="token-comment"># Developer machine</span>
+)</code></pre>
+  </div>
+
+  <h2 id="integration">Integration</h2>
+  <p>
+    The IP access control module runs <strong>after</strong> rate limiting in the middleware chain. When a request is
+    blocked, the event is logged to the audit system with the client IP, matched CIDR rule, and the mode that triggered
+    the block.
+  </p>
+  <p>
+    Like all Araxys modules, it integrates via <code>AraxysConfig.ip_access</code>. Set to <code>None</code> (default)
+    to disable the module entirely.
+  </p>
+
+</DocsLayout>

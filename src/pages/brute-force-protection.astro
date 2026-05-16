@@ -1,0 +1,162 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Brute Force Protection" activeNav="brute-force-protection" description="Account lockout with 6 password rules and HIBP breach detection.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys protects authentication endpoints from brute force attacks through a three-layer approach: <strong>account
+    lockout</strong> after repeated failures (returns <code>423 Locked</code>), a <strong>6-rule password policy</strong>
+    that enforces complexity requirements, and optional <strong>Have I Been Pwned</strong> (HIBP) integration that checks
+    passwords against known breach databases using the k-anonymity API.
+  </p>
+
+  <h2 id="how-it-works">How It Works</h2>
+
+  <h3 id="account-lockout">Account Lockout</h3>
+  <p>
+    After <code>max_attempts</code> consecutive failed login attempts, Araxys locks the account and returns
+    <code>423 Locked</code> for all subsequent attempts. The lockout lasts for <code>lockout_duration</code> seconds
+    before the counter resets automatically. Successful logins reset the failure counter.
+  </p>
+
+  <h3 id="password-rules">Password Policy Rules</h3>
+  <p>Araxys enforces six configurable password rules:</p>
+  <ul>
+    <li><strong><code>min_length</code></strong> — Minimum password length (default: 8)</li>
+    <li><strong><code>require_upper</code></strong> — At least one uppercase letter required (default: <code>True</code>)</li>
+    <li><strong><code>require_lower</code></strong> — At least one lowercase letter required (default: <code>True</code>)</li>
+    <li><strong><code>require_digit</code></strong> — At least one digit required (default: <code>True</code>)</li>
+    <li><strong><code>require_special</code></strong> — At least one special character required (default: <code>False</code>)</li>
+    <li><strong><code>reject_common</code></strong> — Reject passwords from a built-in common password list (default: <code>True</code>)</li>
+  </ul>
+
+  <h3 id="hibp">Have I Been Pwned Integration</h3>
+  <p>
+    When <code>hibp_enabled=True</code>, Araxys sends the <strong>first 5 characters of the SHA-1 hash</strong> of the
+    password to the <a href="https://haveibeenpwned.com/API/v3" target="_blank" rel="noopener">HIBP k-anonymity API</a>
+    (v5). The API returns all matching hash suffixes, and Araxys checks if the full hash appears in the response.
+    If a match is found, the password is rejected with a <em>"Password has been compromised"</em> error.
+  </p>
+  <p>
+    The integration is <strong>best-effort</strong> — if the HIBP API is unreachable, password validation proceeds
+    without the breach check. This prevents HIBP downtime from blocking legitimate user registrations or password changes.
+  </p>
+
+  <h2 id="configuration">Configuration</h2>
+  <p>Configure brute force protection via the <code>BruteForceConfig</code> model:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig, AraxysShield
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> BruteForceConfig
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">brute_force</span>=<span class="token-function">BruteForceConfig</span>(
+            <span class="token-param">max_attempts</span>=<span class="token-number">5</span>,
+            <span class="token-param">lockout_duration</span>=<span class="token-number">900</span>,
+            <span class="token-param">password_rules</span>=&#123;
+                <span class="token-string">"min_length"</span>: <span class="token-number">12</span>,
+                <span class="token-string">"require_upper"</span>: <span class="token-bool">True</span>,
+                <span class="token-string">"require_lower"</span>: <span class="token-bool">True</span>,
+                <span class="token-string">"require_digit"</span>: <span class="token-bool">True</span>,
+                <span class="token-string">"require_special"</span>: <span class="token-bool">True</span>,
+                <span class="token-string">"reject_common"</span>: <span class="token-bool">True</span>,
+            &#125;,
+            <span class="token-param">hibp_enabled</span>=<span class="token-bool">True</span>,
+        ),
+    ),
+)</code></pre>
+  </div>
+
+  <h3 id="config-reference">Configuration Reference</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>max_attempts</code></td><td><code>int</code></td><td><code>5</code></td><td>Failed attempts before lockout</td></tr>
+      <tr><td><code>lockout_duration</code></td><td><code>int</code></td><td><code>900</code></td><td>Lockout duration in seconds</td></tr>
+      <tr><td><code>password_rules</code></td><td><code>dict</code></td><td><code>&#123;"min_length": 8, "require_upper": True, "require_lower": True, "require_digit": True, "require_special": False, "reject_common": True&#125;</code></td><td>Password policy</td></tr>
+      <tr><td><code>hibp_enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable HIBP check</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--warning">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+      HIBP Fail-Open
+    </div>
+    <div class="alert-content">
+      If the HIBP API is unreachable, password validation proceeds <strong>without</strong> the breach check. This prevents HIBP downtime from blocking legitimate logins or registrations. A warning is logged when the API call fails.
+    </div>
+  </div>
+
+  <h2 id="code-examples">Code Examples</h2>
+
+  <h3>Custom Rules Per User Role</h3>
+  <p>You can define different password rules for different user roles by creating multiple configs:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Strict rules for admin accounts</span>
+admin_rules = <span class="token-function">BruteForceConfig</span>(
+    <span class="token-param">max_attempts</span>=<span class="token-number">3</span>,
+    <span class="token-param">lockout_duration</span>=<span class="token-number">1800</span>,
+    <span class="token-param">password_rules</span>=&#123;
+        <span class="token-string">"min_length"</span>: <span class="token-number">16</span>,
+        <span class="token-string">"require_upper"</span>: <span class="token-bool">True</span>,
+        <span class="token-string">"require_lower"</span>: <span class="token-bool">True</span>,
+        <span class="token-string">"require_digit"</span>: <span class="token-bool">True</span>,
+        <span class="token-string">"require_special"</span>: <span class="token-bool">True</span>,
+        <span class="token-string">"reject_common"</span>: <span class="token-bool">True</span>,
+    &#125;,
+    <span class="token-param">hibp_enabled</span>=<span class="token-bool">True</span>,
+)
+
+<span class="token-comment"># Relaxed rules for read-only API tokens</span>
+api_rules = <span class="token-function">BruteForceConfig</span>(
+    <span class="token-param">max_attempts</span>=<span class="token-number">10</span>,
+    <span class="token-param">lockout_duration</span>=<span class="token-number">300</span>,
+    <span class="token-param">password_rules</span>=&#123;
+        <span class="token-string">"min_length"</span>: <span class="token-number">8</span>,
+        <span class="token-string">"require_upper"</span>: <span class="token-bool">False</span>,
+        <span class="token-string">"require_lower"</span>: <span class="token-bool">False</span>,
+        <span class="token-string">"require_digit"</span>: <span class="token-bool">False</span>,
+        <span class="token-string">"require_special"</span>: <span class="token-bool">False</span>,
+        <span class="token-string">"reject_common"</span>: <span class="token-bool">False</span>,
+    &#125;,
+    <span class="token-param">hibp_enabled</span>=<span class="token-bool">False</span>,
+)</code></pre>
+  </div>
+
+  <h2 id="integration">Integration</h2>
+  <p>
+    The brute force module integrates with the <strong>Audit Logging</strong> system — each failed login attempt is
+    logged with the client IP, username, and current attempt count. Successful logins after a lockout period also
+    emit an audit event.
+  </p>
+  <p>
+    In the middleware chain, brute force protection sits <strong>after</strong> rate limiting but <strong>before</strong>
+    the request handler. This ensures that rate limiting catches volumetric attacks first, while brute force protection
+    handles targeted credential stuffing against specific accounts.
+  </p>
+
+</DocsLayout>

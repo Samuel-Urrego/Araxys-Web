@@ -1,0 +1,144 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="CSRF Protection" activeNav="csrf-protection" description="Double-submit cookie pattern with constant-time token validation.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys implements the <strong>double-submit cookie</strong> pattern for CSRF protection. A cryptographically random
+    token is set as a cookie on the client, and the client must send that same token back in the
+    <code>X-CSRF-Token</code> request header. The server validates that both values match using a constant-time
+    comparison to prevent timing-based attacks.
+  </p>
+
+  <h2 id="how-it-works">How It Works</h2>
+
+  <h3 id="double-submit">Double-Submit Cookie Pattern</h3>
+  <p>
+    On first request, Araxys sets a cookie named <code>_araxys_csrf</code> containing a cryptographically random token.
+    For any state-changing request (<code>POST</code>, <code>PUT</code>, <code>DELETE</code>, <code>PATCH</code>),
+    the client must read this cookie value and include it as the <code>X-CSRF-Token</code> header. The server compares
+    the cookie value against the header value — a match means the request is legitimate.
+  </p>
+  <p>
+    Because an attacker cannot read the cookie value from a different origin (thanks to the same-origin policy),
+    they cannot forge the header. This is the core security guarantee of the double-submit pattern.
+  </p>
+
+  <h3 id="constant-time">Constant-Time Comparison</h3>
+  <p>
+    Token comparison uses <code>secrets.compare_digest()</code> from Python's standard library. This function performs
+    the comparison in constant time — the execution time does not reveal how many characters matched. Without this,
+    an attacker could use timing differences to guess the token one character at a time.
+  </p>
+
+  <h3 id="exclude-paths">Excluded Paths</h3>
+  <p>
+    Use <code>exclude_paths</code> to exempt certain routes from CSRF validation. This is essential for webhook
+    receivers, callback URLs from third-party services, and internal API endpoints that are never called from a
+    browser context. Paths can use glob patterns for flexible matching.
+  </p>
+
+  <h2 id="configuration">Configuration</h2>
+  <p>Configure CSRF protection via the <code>CSRFConfig</code> model:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig, AraxysShield
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> CSRFConfig
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">csrf</span>=<span class="token-function">CSRFConfig</span>(
+            <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+            <span class="token-param">cookie_name</span>=<span class="token-string">"_araxys_csrf"</span>,
+            <span class="token-param">token_ttl</span>=<span class="token-number">3600</span>,
+            <span class="token-param">exclude_paths</span>=[<span class="token-string">"/webhooks/*"</span>, <span class="token-string">"/healthz"</span>],
+        ),
+    ),
+)</code></pre>
+  </div>
+
+  <h3 id="config-reference">Configuration Reference</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable CSRF protection</td></tr>
+      <tr><td><code>cookie_name</code></td><td><code>str</code></td><td><code>"_araxys_csrf"</code></td><td>CSRF cookie name</td></tr>
+      <tr><td><code>token_ttl</code></td><td><code>int</code></td><td><code>3600</code></td><td>Token TTL in seconds</td></tr>
+      <tr><td><code>exclude_paths</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>Paths exempt from CSRF</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      Constant-Time Comparison
+    </div>
+    <div class="alert-content">
+      Token validation uses <code>secrets.compare_digest()</code> to prevent timing attacks that could reveal token differences character by character. This is the same function Python uses internally for secure password comparison.
+    </div>
+  </div>
+
+  <h2 id="code-examples">Code Examples</h2>
+
+  <h3>AJAX Fetch Wrapper</h3>
+  <p>When making API calls from the browser, include the CSRF token in every state-changing request:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">javascript</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment">// Read CSRF token from cookie</span>
+<span class="token-keyword">function</span> <span class="token-function">getCSRFToken</span>() &#123;
+    <span class="token-keyword">const</span> match = <span class="token-builtin">document</span>.cookie
+        .<span class="token-function">match</span>(<span class="token-string">/(?:^|; )_araxys_csrf=([^;]*)/</span>);
+    <span class="token-keyword">return</span> match ? <span class="token-function">decodeURIComponent</span>(match[<span class="token-number">1</span>]) : <span class="token-keyword">null</span>;
+&#125;
+
+<span class="token-comment">// Wrapper that automatically includes CSRF token</span>
+<span class="token-keyword">async function</span> <span class="token-function">apiRequest</span>(<span class="token-param">url</span>, <span class="token-param">options</span> = &#123;&#125;) &#123;
+    <span class="token-keyword">const</span> csrfToken = <span class="token-function">getCSRFToken</span>();
+    <span class="token-keyword">const</span> headers = &#123;
+        <span class="token-string">"Content-Type"</span>: <span class="token-string">"application/json"</span>,
+        ...options.headers,
+    &#125;;
+
+    <span class="token-comment">// Attach CSRF token to state-changing methods</span>
+    <span class="token-keyword">if</span> (csrfToken && [<span class="token-string">"POST"</span>, <span class="token-string">"PUT"</span>, <span class="token-string">"DELETE"</span>, <span class="token-string">"PATCH"</span>]
+        .<span class="token-function">includes</span>(options.method?.<span class="token-function">toUpperCase</span>() || <span class="token-string">"GET"</span>)) &#123;
+        headers[<span class="token-string">"X-CSRF-Token"</span>] = csrfToken;
+    &#125;
+
+    <span class="token-keyword">return</span> <span class="token-function">fetch</span>(url, &#123; ...options, headers &#125;);
+&#125;</code></pre>
+  </div>
+
+  <h2 id="integration">Integration</h2>
+  <p>
+    CSRF protection works closely with <strong>Session Management</strong> when both are enabled — the CSRF token
+    can be tied to the active session for additional security. Token signing relies on the same
+    <code>secret_key</code> used by other Araxys modules.
+  </p>
+  <p>
+    CSRF validation is applied as a FastAPI dependency (per-route), not as ASGI middleware. This means you control
+    exactly which routes require CSRF protection and which do not.
+  </p>
+
+</DocsLayout>
