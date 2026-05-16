@@ -46,6 +46,14 @@ import '../styles/global.css';
       <tr><td><code>secure_headers</code></td><td><code>SecureHeadersConfig</code></td><td>defaults</td><td>—</td><td>Security headers settings</td></tr>
       <tr><td><code>sanitize</code></td><td><code>SanitizeConfig</code></td><td>defaults</td><td>—</td><td>Payload sanitization settings</td></tr>
       <tr><td><code>audit</code></td><td><code>AuditConfig</code></td><td>defaults</td><td>—</td><td>Audit logging settings</td></tr>
+      <tr><td><code>cors</code></td><td><code>CORSConfig | None</code></td><td><code>None</code></td><td>—</td><td>CORS policy configuration</td></tr>
+      <tr><td><code>ip_access</code></td><td><code>IPAccessConfig | None</code></td><td><code>None</code></td><td>—</td><td>IP access control configuration</td></tr>
+      <tr><td><code>csrf</code></td><td><code>CSRFConfig | None</code></td><td><code>None</code></td><td>—</td><td>CSRF protection configuration</td></tr>
+      <tr><td><code>brute_force</code></td><td><code>BruteForceConfig | None</code></td><td><code>None</code></td><td>—</td><td>Brute force + password policy</td></tr>
+      <tr><td><code>session</code></td><td><code>SessionConfig | None</code></td><td><code>None</code></td><td>—</td><td>Session management configuration</td></tr>
+      <tr><td><code>otel</code></td><td><code>OTelConfig | None</code></td><td><code>None</code></td><td>—</td><td>OpenTelemetry configuration</td></tr>
+      <tr><td><code>webhooks</code></td><td><code>WebhookConfig | None</code></td><td><code>None</code></td><td>—</td><td>Security webhooks configuration</td></tr>
+      <tr><td><code>prometheus</code></td><td><code>PrometheusConfig | None</code></td><td><code>None</code></td><td>—</td><td>Prometheus metrics configuration</td></tr>
     </tbody>
   </table>
 
@@ -147,5 +155,65 @@ shield = <span class="token-function">AraxysShield</span>(app, config)</code></p
       <tr><td><strong>HTTPS</strong></td><td>Always deploy behind TLS — HSTS headers expect it</td></tr>
     </tbody>
   </table>
+
+  <h2 id="new-modules-v040">New Module Configs (v0.4.0)</h2>
+  <p>Araxys v0.4.0 introduces 8 new configuration classes for the expanded security module suite:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Config Class</th>
+        <th>Module</th>
+        <th>Key Fields</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>CORSConfig</code></td><td>CORS Policy</td><td><code>allowed_origins</code>, <code>allowed_methods</code></td></tr>
+      <tr><td><code>IPAccessConfig</code></td><td>IP Access Control</td><td><code>mode</code>, <code>allowed_ips</code>, <code>blocked_ips</code></td></tr>
+      <tr><td><code>CSRFConfig</code></td><td>CSRF Protection</td><td><code>cookie_name</code>, <code>token_ttl</code></td></tr>
+      <tr><td><code>BruteForceConfig</code></td><td>Brute Force</td><td><code>max_attempts</code>, <code>password_rules</code></td></tr>
+      <tr><td><code>SessionConfig</code></td><td>Sessions</td><td><code>max_concurrent</code>, <code>session_ttl</code></td></tr>
+      <tr><td><code>OTelConfig</code></td><td>OpenTelemetry</td><td><code>service_name</code>, <code>exporter_endpoint</code></td></tr>
+      <tr><td><code>WebhookConfig</code></td><td>Webhooks</td><td><code>webhook_url</code>, <code>events</code></td></tr>
+      <tr><td><code>PrometheusConfig</code></td><td>Metrics</td><td><code>metrics_path</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    All config classes default to <code>None</code> in the master <code>AraxysConfig</code>, meaning modules are disabled until explicitly configured. Install all optional dependencies with:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">bash</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Install Araxys with ALL optional dependencies</span>
+pip install araxys[all]</code></pre>
+  </div>
+
+  <h2 id="graceful-shutdown">Graceful Shutdown</h2>
+  <p>
+    Araxys v0.4.0 provides a <code>shield.shutdown()</code> method for <strong>graceful cleanup</strong> on application shutdown. This terminates all background tasks — session cleanup loops, webhook retry queues, and any other long-running background operations.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> contextlib <span class="token-keyword">import</span> asynccontextmanager
+<span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> FastAPI
+
+<span class="token-decorator">@asynccontextmanager</span>
+<span class="token-keyword">async def</span> <span class="token-function">lifespan</span>(<span class="token-param">app</span>: FastAPI):
+    <span class="token-comment"># Startup</span>
+    shield = <span class="token-function">AraxysShield</span>(app, config)
+    <span class="token-keyword">yield</span>
+    <span class="token-comment"># Shutdown — graceful cleanup</span>
+    <span class="token-keyword">await</span> shield.<span class="token-function">shutdown</span>()
+
+app = <span class="token-function">FastAPI</span>(<span class="token-param">lifespan</span>=lifespan)</code></pre>
+  </div>
 
 </DocsLayout>

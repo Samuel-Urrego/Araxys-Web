@@ -1,0 +1,145 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="OpenTelemetry" activeNav="opentelemetry" description="Span-per-middleware tracing with graceful no-op fallback when SDK is absent.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys provides <strong>opt-in OpenTelemetry tracing</strong> that creates a dedicated span per middleware module. Each Araxys module — CORS, rate limiting, honeypot, sanitization, and more — creates its own child span under the request's root span.
+  </p>
+  <p>
+    Tracing is <strong>disabled by default</strong> (<code>enabled: False</code>), with <strong>zero overhead</strong> when turned off. If the OpenTelemetry SDK is not installed, Araxys falls back to a graceful no-op — your application continues running normally.
+  </p>
+
+  <h2 id="how-it-works">How It Works</h2>
+
+  <h3 id="span-per-middleware">Span-per-Middleware</h3>
+  <p>
+    Each middleware registered on the Araxys shield creates a named child span under the incoming request's root span. Spans are named after the module they represent — <code>araxys.cors</code>, <code>araxys.rate_limit</code>, <code>araxys.honeypot</code>, <code>araxys.sanitize</code>, etc. — making it easy to identify where time is spent in the request lifecycle.
+  </p>
+  <p>
+    When an incoming request already carries <a href="https://www.w3.org/TR/trace-context/" target="_blank" rel="noopener">W3C Trace Context</a> headers (<code>traceparent</code>, <code>tracestate</code>), Araxys uses the parent trace context — enabling end-to-end distributed tracing across services.
+  </p>
+
+  <h3 id="opt-in">Opt-In (Zero Overhead When Disabled)</h3>
+  <p>
+    OpenTelemetry is <strong>disabled by default</strong>. When <code>enabled=False</code>, Araxys creates no spans, performs no context propagation, and adds zero overhead to the request path. Set <code>enabled=True</code> explicitly to activate tracing.
+  </p>
+
+  <h3 id="no-op-fallback">No-Op Fallback</h3>
+  <p>
+    If the <code>opentelemetry-api</code> package is not installed in the environment and <code>enabled=True</code>, Araxys logs a warning and continues without tracing. Your application never crashes due to missing observability dependencies.
+  </p>
+
+  <h2 id="configuration">Configuration</h2>
+  <p>Configure OpenTelemetry via the <code>OTelConfig</code> model passed to <code>AraxysConfig.otel</code>:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig, AraxysShield
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> OTelConfig
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">otel</span>=<span class="token-function">OTelConfig</span>(
+            <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+            <span class="token-param">service_name</span>=<span class="token-string">"my-api"</span>,
+            <span class="token-param">exporter_endpoint</span>=<span class="token-string">"http://localhost:4317"</span>,
+        ),
+    ),
+)</code></pre>
+  </div>
+
+  <h3 id="config-reference">Configuration Reference</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>False</code></td><td>Enable OpenTelemetry tracing</td></tr>
+      <tr><td><code>service_name</code></td><td><code>str</code></td><td><code>"araxys"</code></td><td>Service name for traces</td></tr>
+      <tr><td><code>exporter_endpoint</code></td><td><code>str | None</code></td><td><code>None</code></td><td>OTLP gRPC endpoint (None = console exporter)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      No-Op Fallback
+    </div>
+    <div class="alert-content">
+      If the OpenTelemetry SDK is not installed, Araxys logs a warning and continues without tracing. Your app never breaks because of missing observability dependencies.
+    </div>
+  </div>
+
+  <h2 id="integration">Integration</h2>
+  <p>
+    OpenTelemetry wraps <strong>ALL</strong> middleware as the outermost tracing layer. Spans propagate from incoming W3C Trace Context headers, enabling end-to-end distributed tracing. Works with <strong>Jaeger</strong>, <strong>Zipkin</strong>, and any OTLP-compatible backend.
+  </p>
+
+  <h3 id="otlp-setup">OTLP Exporter Setup</h3>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> OTelConfig
+
+<span class="token-comment"># OTLP over gRPC to local collector</span>
+config = <span class="token-function">OTelConfig</span>(
+    <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+    <span class="token-param">service_name</span>=<span class="token-string">"my-api"</span>,
+    <span class="token-param">exporter_endpoint</span>=<span class="token-string">"http://localhost:4317"</span>,
+)`} /></pre>
+  </div>
+
+  <h3 id="jaeger-config">Jaeger Configuration</h3>
+  <p>Point the OTLP exporter to your Jaeger collector's gRPC port:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-comment"># Point to Jaeger's OTLP gRPC endpoint</span>
+<span class="token-comment"># Jaeger supports OTLP natively since v1.35</span>
+config = <span class="token-function">OTelConfig</span>(
+    <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+    <span class="token-param">service_name</span>=<span class="token-string">"my-api"</span>,
+    <span class="token-param">exporter_endpoint</span>=<span class="token-string">"http://jaeger:4317"</span>,
+)`} /></pre>
+  </div>
+
+  <h3 id="custom-span-attributes">Custom Span Attributes</h3>
+  <p>You can add custom attributes to any request's trace by accessing the active span from within your handler:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> opentelemetry <span class="token-keyword">import</span> trace
+
+<span class="token-decorator">@app.get</span>(<span class="token-string">"/orders/&#123;order_id&#125;"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">get_order</span>(<span class="token-param">order_id</span>: <span class="token-builtin">str</span>):
+    span = trace.<span class="token-function">get_current_span</span>()
+    span.<span class="token-function">set_attribute</span>(<span class="token-string">"order.id"</span>, order_id)
+    span.<span class="token-function">set_attribute</span>(<span class="token-string">"order.region"</span>, <span class="token-string">"us-east-1"</span>)
+    <span class="token-keyword">return</span> <span class="token-function">get_order_from_db</span>(order_id)`} /></pre>
+  </div>
+
+</DocsLayout>

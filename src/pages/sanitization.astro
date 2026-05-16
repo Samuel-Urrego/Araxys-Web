@@ -123,9 +123,50 @@ config = <span class="token-function">AraxysConfig</span>(
       <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable/disable sanitization</td></tr>
       <tr><td><code>block_sqli</code></td><td><code>bool</code></td><td><code>True</code></td><td>Block SQL injection attempts</td></tr>
       <tr><td><code>strip_xss</code></td><td><code>bool</code></td><td><code>True</code></td><td>Strip XSS payloads</td></tr>
+      <tr><td><code>block_nosqli</code></td><td><code>bool</code></td><td><code>True</code></td><td>Block NoSQL injection ($operators)</td></tr>
+      <tr><td><code>block_cmdi</code></td><td><code>bool</code></td><td><code>True</code></td><td>Block command injection</td></tr>
+      <tr><td><code>block_path_traversal</code></td><td><code>bool</code></td><td><code>True</code></td><td>Block path traversal</td></tr>
       <tr><td><code>max_depth</code></td><td><code>int</code></td><td><code>10</code></td><td>Max recursion depth for nested scanning (≥1)</td></tr>
       <tr><td><code>exclude_paths</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>Paths excluded from sanitization</td></tr>
+      <tr><td><code>scan_query_params</code></td><td><code>bool</code></td><td><code>True</code></td><td>Scan query parameters</td></tr>
+      <tr><td><code>scan_headers</code></td><td><code>bool</code></td><td><code>False</code></td><td>Scan request headers</td></tr>
     </tbody>
   </table>
+
+  <h2 id="nosql-injection">NoSQL Injection</h2>
+  <p>
+    Araxys detects and blocks <strong>MongoDB $operator injection</strong> attacks. When <code>block_nosqli=True</code>, the scanner detects MongoDB operators including <code>$gt</code>, <code>$ne</code>, <code>$where</code>, <code>$regex</code>, <code>$nin</code>, <code>$exists</code>, <code>$gte</code>, <code>$lte</code>, and others. The request is rejected with <code>400 Bad Request</code> — fail-closed, identical to SQLi blocking.
+  </p>
+
+  <h2 id="command-injection">Command Injection</h2>
+  <p>
+    Araxys detects <strong>shell metacharacters</strong> and <strong>dangerous commands</strong> in request payloads. When <code>block_cmdi=True</code>, the scanner blocks shell metacharacters (<code>;</code>, <code>|</code>, <code>&amp;&amp;</code>, <code>||</code>, backticks <code>`</code>, <code>$()</code>) and dangerous commands (<code>rm</code>, <code>wget</code>, <code>curl</code>, <code>nc</code>, <code>bash</code>, <code>sh</code>, <code>powershell</code>). Returns <code>400 Bad Request</code>.
+  </p>
+
+  <h2 id="path-traversal">Path Traversal</h2>
+  <p>
+    Araxys detects <strong>directory traversal</strong> attempts. When <code>block_path_traversal=True</code>, the scanner blocks sequences including <code>../</code> and <code>..\\</code>, null bytes (<code>\0</code>), and absolute path references (<code>/etc/passwd</code>, <code>C:\</code>). Returns <code>400 Bad Request</code>.
+  </p>
+
+  <h2 id="extended-scanning">Extended Scanning</h2>
+  <p>
+    By default, Araxys scans the request <strong>body</strong> (JSON payload). The extended scanning options expand coverage:
+  </p>
+  <ul>
+    <li><strong><code>scan_query_params</code></strong> (<code>True</code> by default): Scans query parameter <strong>names AND values</strong> for all injection types</li>
+    <li><strong><code>scan_headers</code></strong> (<code>False</code> by default): Scans request headers for all injection types</li>
+  </ul>
+
+  <div class="alert alert--warning">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+      Header Scanning Caution
+    </div>
+    <div class="alert-content">
+      <code>scan_headers</code> is <strong>False by default</strong> — headers often contain base64-encoded content, JWT tokens, or API keys that may trigger false positive matches against injection patterns.
+    </div>
+  </div>
+
+</DocsLayout>
 
 </DocsLayout>

@@ -1,0 +1,167 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Security Webhooks" activeNav="security-webhooks" description="Unified event bus with per-event delivery and exponential backoff retry.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    All Araxys security events flow through a <strong>unified event bus</strong> that powers the webhook delivery system. You can configure per-event-type webhook URLs, set a default URL for all events, and rely on <strong>fire-and-forget delivery</strong> with 1s/2s/4s exponential backoff retry.
+  </p>
+
+  <h2 id="how-it-works">How It Works</h2>
+
+  <h3 id="event-bus">Unified Event Bus</h3>
+  <p>
+    The <code>SecurityEventBus</code> collects events from all 15 Araxys modules. Every security-relevant action — rate limit triggers, honeypot hits, IP bans, brute force lockouts, API key operations, token rotations, and more — is published to the event bus. Webhooks subscribed to the bus receive these events in near real-time.
+  </p>
+  <p>Event types published to the bus include:</p>
+  <ul>
+    <li><code>RATE_LIMITED</code> — Request blocked by rate limiter</li>
+    <li><code>HONEYPOT_TRIGGERED</code> — Bot accessed a honeypot path</li>
+    <li><code>IP_BANNED</code> / <code>IP_UNBANNED</code> — IP ban events</li>
+    <li><code>BRUTE_FORCE_LOCKOUT</code> — Account locked due to failed attempts</li>
+    <li><code>API_KEY_CREATED</code> / <code>REVOKED</code> / <code>VERIFIED</code> / <code>REJECTED</code> — API key lifecycle</li>
+    <li><code>TOKEN_ROTATED</code> / <code>TOKEN_REVOKED</code> — JWT token events</li>
+    <li><code>SANITIZATION_BLOCKED</code> — Injection attack blocked</li>
+    <li><code>SESSION_REVOKED</code> — Session terminated</li>
+  </ul>
+
+  <h3 id="per-event-delivery">Per-Event Delivery</h3>
+  <p>
+    Each event type can target a <strong>different webhook URL</strong> for granular routing. All events can also go to a <strong>default URL</strong>. If both default and per-event URLs are configured, the per-event URL takes precedence.
+  </p>
+
+  <h3 id="retry-policy">Retry Policy</h3>
+  <p>
+    Webhook delivery uses <strong>exponential backoff</strong> with a maximum of 3 retry attempts. The backoff sequence is 1 second, 2 seconds, and 4 seconds. After 3 consecutive failures, the event is discarded and an audit warning is logged.
+  </p>
+
+  <h3 id="hmac-signing">HMAC Signing</h3>
+  <p>
+    Every webhook payload is <strong>HMAC-SHA256 signed</strong> using the Araxys <code>secret_key</code>. The signature is sent in the <code>X-Araxys-Signature</code> header, allowing the receiver to verify the webhook's authenticity.
+  </p>
+
+  <h2 id="configuration">Configuration</h2>
+  <p>Configure webhooks via the <code>WebhookConfig</code> model passed to <code>AraxysConfig.webhooks</code>:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig, AraxysShield
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> WebhookConfig
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">webhooks</span>=<span class="token-function">WebhookConfig</span>(
+            <span class="token-param">webhook_url</span>=<span class="token-string">"https://hooks.example.com/araxys"</span>,
+            <span class="token-param">events</span>=[<span class="token-string">"RATE_LIMITED"</span>, <span class="token-string">"BRUTE_FORCE_LOCKOUT"</span>],
+        ),
+    ),
+)</code></pre>
+  </div>
+
+  <h3 id="config-reference">Configuration Reference</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>webhook_url</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Default webhook URL for all events</td></tr>
+      <tr><td><code>events</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>Event types to deliver (empty = none)</td></tr>
+      <tr><td><code>retry_policy</code></td><td><code>dict</code></td><td><code>&#123;"max_retries": 3, "backoff": [1, 2, 4]&#125;</code></td><td>Retry configuration</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--warning">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+      Fire-and-Forget
+    </div>
+    <div class="alert-content">
+      Webhook delivery is non-blocking to the request flow. Failed deliveries retry in the background. After max retries, events are discarded with an audit warning.
+    </div>
+  </div>
+
+  <h2 id="integration">Integration</h2>
+  <p>
+    The webhook system listens to the unified event bus from <strong>ALL</strong> Araxys modules. Events include: <code>RATE_LIMITED</code>, <code>HONEYPOT_TRIGGERED</code>, <code>API_KEY_CREATED</code>, <code>API_KEY_REVOKED</code>, <code>API_KEY_VERIFIED</code>, <code>API_KEY_REJECTED</code>, <code>TOKEN_ROTATED</code>, <code>TOKEN_REVOKED</code>, <code>SANITIZATION_BLOCKED</code>, <code>IP_BANNED</code>, <code>IP_UNBANNED</code>, <code>BRUTE_FORCE_LOCKOUT</code>, <code>SESSION_REVOKED</code>.
+  </p>
+
+  <h3 id="rate-limit-webhook">Rate Limit Webhook Example</h3>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> WebhookConfig
+
+<span class="token-comment"># Deliver only rate limit and brute force events</span>
+config = <span class="token-function">WebhookConfig</span>(
+    <span class="token-param">webhook_url</span>=<span class="token-string">"https://alerts.example.com/araxys"</span>,
+    <span class="token-param">events</span>=[
+        <span class="token-string">"RATE_LIMITED"</span>,
+        <span class="token-string">"BRUTE_FORCE_LOCKOUT"</span>,
+        <span class="token-string">"IP_BANNED"</span>,
+    ],
+)</code></pre>
+  </div>
+
+  <h3 id="per-event-url">Per-Event URL Configuration</h3>
+  <p>Route specific event types to different endpoints using the events configuration:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-comment"># Different URLs for different event severities</span>
+<span class="token-comment"># (per-event URLs are configured via event routing)</span>
+
+<span class="token-comment"># High-severity: rate limits and lockouts → pager duty</span>
+<span class="token-comment"># Informational: key creation → audit log</span>
+
+config = <span class="token-function">WebhookConfig</span>(
+    <span class="token-param">webhook_url</span>=<span class="token-string">"https://audit.example.com/events"</span>,
+    <span class="token-param">events</span>=[
+        <span class="token-string">"RATE_LIMITED"</span>,
+        <span class="token-string">"BRUTE_FORCE_LOCKOUT"</span>,
+        <span class="token-string">"API_KEY_CREATED"</span>,
+        <span class="token-string">"API_KEY_REVOKED"</span>,
+    ],
+)`} /></pre>
+  </div>
+
+  <h3 id="hmac-verification">HMAC Verification on Receiver</h3>
+  <p>Verify incoming webhooks on the receiver side using the shared secret:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">import</span> hmac
+<span class="token-keyword">import</span> hashlib
+
+<span class="token-keyword">async def</span> <span class="token-function">verify_webhook</span>(<span class="token-param">payload</span>: <span class="token-builtin">bytes</span>, <span class="token-param">signature</span>: <span class="token-builtin">str</span>, <span class="token-param">secret</span>: <span class="token-builtin">str</span>):
+    expected = hmac.<span class="token-function">new</span>(
+        secret.<span class="token-function">encode</span>(),
+        payload,
+        hashlib.sha256,
+    ).<span class="token-function">hexdigest</span>()
+    <span class="token-keyword">return</span> hmac.<span class="token-function">compare_digest</span>(signature, expected)`} /></pre>
+  </div>
+
+</DocsLayout>

@@ -1,0 +1,198 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Secure Headers" activeNav="secure-headers" description="CSP builder, COOP/COEP/CORP, hide server header, and all OWASP-recommended security headers.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    The Secure Headers module is a standalone security middleware that injects <strong>10+ configurable security headers</strong> into every response. It features a <strong>programmatic CSP builder</strong> using Python dicts, cross-origin isolation headers (COOP/COEP/CORP), and the ability to strip the <code>Server</code> header entirely.
+  </p>
+
+  <h2 id="how-it-works">How It Works</h2>
+
+  <h3 id="csp-builder">Programmatic CSP Builder</h3>
+  <p>
+    Instead of writing raw Content-Security-Policy strings, pass a Python <strong>dict</strong> and Araxys builds the policy string for you. Each key becomes a directive, and values can be strings or lists of strings that are joined with spaces.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`csp = {
+    "default-src": "'self'",
+    "script-src": ["'self'", "cdn.example.com"],
+    "style-src": ["'self'", "fonts.googleapis.com"],
+    "img-src": "*",
+    "font-src": ["'self'", "fonts.gstatic.com"],
+    "connect-src": ["'self'", "api.example.com"],
+    "frame-ancestors": "'none'",
+    "form-action": "'self'",
+}
+
+<span class="token-comment"># Araxys converts this to:</span>
+<span class="token-comment"># default-src 'self'; script-src 'self' cdn.example.com; style-src 'self' fonts.googleapis.com; ...</span>`} /></pre>
+  </div>
+
+  <h3 id="cross-origin-isolation">Cross-Origin Isolation</h3>
+  <p>
+    Araxys sets <strong>COOP</strong> (Cross-Origin-Opener-Policy), <strong>COEP</strong> (Cross-Origin-Embedder-Policy), and <strong>CORP</strong> (Cross-Origin-Resource-Policy) headers for process isolation. These headers protect your application from cross-origin attacks by controlling how documents from different origins interact.
+  </p>
+  <ul>
+    <li><strong>COOP</strong> (<code>same-origin</code>): Isolates your window from cross-origin openers</li>
+    <li><strong>COEP</strong> (<code>require-corp</code>): Only loads resources that explicitly opt-in via CORS or CORP</li>
+    <li><strong>CORP</strong> (<code>same-origin</code>): Restricts resource loading to same-origin</li>
+  </ul>
+
+  <h3 id="hide-server">Hide Server Header</h3>
+  <p>
+    When <code>hide_server=True</code> (default), Araxys strips the <code>Server</code> header from all responses. This prevents attackers from fingerprinting your server software.
+  </p>
+
+  <h2 id="configuration">Configuration</h2>
+  <p>Configure secure headers via the <code>SecureHeadersConfig</code> model passed to <code>AraxysConfig.secure_headers</code>:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig, AraxysShield
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> SecureHeadersConfig
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">secure_headers</span>=<span class="token-function">SecureHeadersConfig</span>(
+            <span class="token-param">csp</span>={
+                <span class="token-string">"default-src"</span>: <span class="token-string">"'self'"</span>,
+                <span class="token-string">"script-src"</span>: [<span class="token-string">"'self'"</span>, <span class="token-string">"cdn.example.com"</span>],
+            },
+            <span class="token-param">coop</span>=<span class="token-string">"same-origin"</span>,
+            <span class="token-param">coep</span>=<span class="token-string">"require-corp"</span>,
+            <span class="token-param">hide_server</span>=<span class="token-bool">True</span>,
+        ),
+    ),
+)`} /></pre>
+  </div>
+
+  <h3 id="config-reference">Configuration Reference</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>csp</code></td><td><code>dict | None</code></td><td><code>None</code></td><td>CSP directives as dict (None = no CSP)</td></tr>
+      <tr><td><code>coop</code></td><td><code>str | None</code></td><td><code>"same-origin"</code></td><td>Cross-Origin-Opener-Policy</td></tr>
+      <tr><td><code>coep</code></td><td><code>str | None</code></td><td><code>"require-corp"</code></td><td>Cross-Origin-Embedder-Policy</td></tr>
+      <tr><td><code>corp</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Cross-Origin-Resource-Policy</td></tr>
+      <tr><td><code>hide_server</code></td><td><code>bool</code></td><td><code>True</code></td><td>Remove Server header</td></tr>
+      <tr><td><code>hsts_max_age</code></td><td><code>int</code></td><td><code>31536000</code></td><td>HSTS max-age in seconds</td></tr>
+      <tr><td><code>hsts_include_subdomains</code></td><td><code>bool</code></td><td><code>True</code></td><td>Include subdomains in HSTS</td></tr>
+      <tr><td><code>content_type_nosniff</code></td><td><code>bool</code></td><td><code>True</code></td><td>X-Content-Type-Options: nosniff</td></tr>
+      <tr><td><code>frame_options</code></td><td><code>str</code></td><td><code>"DENY"</code></td><td>X-Frame-Options value</td></tr>
+      <tr><td><code>referrer_policy</code></td><td><code>str</code></td><td><code>"strict-origin-when-cross-origin"</code></td><td>Referrer-Policy value</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="owasp-headers">OWASP Headers Reference</h2>
+  <p>All headers set by the Secure Headers module with their default values:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Header</th>
+        <th>Default Value</th>
+        <th>Config Field</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Strict-Transport-Security</code></td><td><code>max-age=31536000; includeSubDomains</code></td><td><code>hsts_max_age</code>, <code>hsts_include_subdomains</code></td></tr>
+      <tr><td><code>X-Content-Type-Options</code></td><td><code>nosniff</code></td><td><code>content_type_nosniff</code></td></tr>
+      <tr><td><code>X-Frame-Options</code></td><td><code>DENY</code></td><td><code>frame_options</code></td></tr>
+      <tr><td><code>X-XSS-Protection</code></td><td><code>0</code> (disabled — modern best practice)</td><td>—</td></tr>
+      <tr><td><code>Referrer-Policy</code></td><td><code>strict-origin-when-cross-origin</code></td><td><code>referrer_policy</code></td></tr>
+      <tr><td><code>Content-Security-Policy</code></td><td>Set via <code>csp</code> dict</td><td><code>csp</code></td></tr>
+      <tr><td><code>Permissions-Policy</code></td><td>Not set (configurable)</td><td><code>permissions_policy</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      Programmatic CSP
+    </div>
+    <div class="alert-content">
+      Build your Content-Security-Policy as a Python dict. Araxys converts it to the correct header string. No string concatenation required.
+    </div>
+  </div>
+
+  <h2 id="integration">Integration</h2>
+  <p>
+    The Secure Headers module runs <strong>second in the middleware chain</strong>, immediately after CORS. This ensures that CORS headers are set before security headers are injected. The CSP builder can reference external CDN origins in its directives.
+  </p>
+
+  <h3 id="cdn-origins">CSP with CDN Origins</h3>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> SecureHeadersConfig
+
+config = <span class="token-function">SecureHeadersConfig</span>(
+    <span class="token-param">csp</span>={
+        <span class="token-string">"default-src"</span>: <span class="token-string">"'self'"</span>,
+        <span class="token-string">"script-src"</span>: [
+            <span class="token-string">"'self'"</span>,
+            <span class="token-string">"cdnjs.cloudflare.com"</span>,
+            <span class="token-string">"unpkg.com"</span>,
+        ],
+        <span class="token-string">"style-src"</span>: [
+            <span class="token-string">"'self'"</span>,
+            <span class="token-string">"fonts.googleapis.com"</span>,
+            <span class="token-string">"cdnjs.cloudflare.com"</span>,
+        ],
+        <span class="token-string">"font-src"</span>: [
+            <span class="token-string">"'self'"</span>,
+            <span class="token-string">"fonts.gstatic.com"</span>,
+        ],
+        <span class="token-string">"img-src"</span>: <span class="token-string">"'self' data:"</span>,
+        <span class="token-string">"connect-src"</span>: <span class="token-string">"'self' api.example.com"</span>,
+    },
+    <span class="token-param">coop</span>=<span class="token-string">"same-origin"</span>,
+    <span class="token-param">coep</span>=<span class="token-string">"require-corp"</span>,
+    <span class="token-param">hide_server</span>=<span class="token-bool">True</span>,
+)`} /></pre>
+  </div>
+
+  <h3 id="full-setup">Complete Headers Setup</h3>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`config = <span class="token-function">SecureHeadersConfig</span>(
+    <span class="token-param">csp</span>=<span class="token-bool">None</span>,                <span class="token-comment"># Skip CSP (set separately)</span>
+    <span class="token-param">coop</span>=<span class="token-string">"same-origin-allow-popups"</span>,
+    <span class="token-param">coep</span>=<span class="token-bool">None</span>,               <span class="token-comment"># Skip COEP</span>
+    <span class="token-param">corp</span>=<span class="token-string">"same-origin"</span>,
+    <span class="token-param">hide_server</span>=<span class="token-bool">True</span>,
+    <span class="token-param">hsts_max_age</span>=<span class="token-number">63072000</span>,   <span class="token-comment"># 2 years</span>
+    <span class="token-param">frame_options</span>=<span class="token-string">"SAMEORIGIN"</span>,
+)`} /></pre>
+  </div>
+
+</DocsLayout>

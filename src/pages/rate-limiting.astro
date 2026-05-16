@@ -104,6 +104,8 @@ shield = <span class="token-function">AraxysShield</span>(
       <tr><td><code>ban_duration_seconds</code></td><td><code>int</code></td><td><code>300</code></td><td>Initial ban duration in seconds (≥1)</td></tr>
       <tr><td><code>escalation_multiplier</code></td><td><code>float</code></td><td><code>2.0</code></td><td>Ban duration multiplier per violation (≥1.0)</td></tr>
       <tr><td><code>exclude_paths</code></td><td><code>list[str]</code></td><td><code>["/docs", "/redoc", "/openapi.json", "/healthz"]</code></td><td>Paths excluded from rate limiting</td></tr>
+      <tr><td><code>tracking_mode</code></td><td><code>list[Literal["ip", "user", "api_key", "endpoint"]]</code></td><td><code>["ip"]</code></td><td>Rate limit tracking strategies</td></tr>
+      <tr><td><code>per_endpoint_limits</code></td><td><code>dict[str, dict]</code></td><td><code>&#123;&#125;</code></td><td>Endpoint-specific limits (glob patterns)</td></tr>
     </tbody>
   </table>
 
@@ -165,6 +167,86 @@ shield = <span class="token-function">AraxysShield</span>(
 
 <span class="token-comment"># Pass it to the shield</span>
 shield = <span class="token-function">AraxysShield</span>(app, config, <span class="token-param">rate_limit_backend</span>=<span class="token-function">PostgresBackend</span>())</code></pre>
+  </div>
+
+  <h2 id="tracking-strategies">Tracking Strategies</h2>
+  <p>
+    The <code>tracking_mode</code> field controls <strong>what identity</strong> Araxys uses to track requests. You can combine multiple modes — a request is rate limited when <strong>any</strong> tracked identity exceeds the limit.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Strategy</th>
+        <th>Key</th>
+        <th>Requires</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>ip</code></td><td>Client IP address</td><td>Nothing (always available)</td></tr>
+      <tr><td><code>user</code></td><td>JWT <code>sub</code> claim</td><td>JWT auth enabled</td></tr>
+      <tr><td><code>api_key</code></td><td><code>X-API-Key</code> header value</td><td>API Keys module enabled</td></tr>
+      <tr><td><code>endpoint</code></td><td>Request path</td><td>Nothing (always available)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Per-user rate limiting using JWT sub claim</span>
+config = <span class="token-function">RateLimitConfig</span>(
+    <span class="token-param">max_requests</span>=<span class="token-number">100</span>,
+    <span class="token-param">window_seconds</span>=<span class="token-number">60</span>,
+    <span class="token-param">tracking_mode</span>=[<span class="token-string">"user"</span>],
+)
+
+<span class="token-comment"># Per-API-key rate limiting</span>
+config = <span class="token-function">RateLimitConfig</span>(
+    <span class="token-param">max_requests</span>=<span class="token-number">1000</span>,
+    <span class="token-param">window_seconds</span>=<span class="token-number">3600</span>,
+    <span class="token-param">tracking_mode</span>=[<span class="token-string">"api_key"</span>],
+)
+
+<span class="token-comment"># Combined: IP + user tracking</span>
+config = <span class="token-function">RateLimitConfig</span>(
+    <span class="token-param">max_requests</span>=<span class="token-number">200</span>,
+    <span class="token-param">window_seconds</span>=<span class="token-number">120</span>,
+    <span class="token-param">tracking_mode</span>=[<span class="token-string">"ip"</span>, <span class="token-string">"user"</span>],
+)</code></pre>
+  </div>
+
+  <h2 id="per-endpoint-limits">Per-Endpoint Limits</h2>
+  <p>
+    The <code>per_endpoint_limits</code> setting allows <strong>different rate limits</strong> for different endpoints using <strong>glob pattern</strong> matching (via Python's <code>fnmatch</code>). Endpoint-specific limits override the global <code>max_requests</code> when the request path matches.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-comment"># Different limits per API tier</span>
+config = <span class="token-function">RateLimitConfig</span>(
+    <span class="token-param">max_requests</span>=<span class="token-number">200</span>,  <span class="token-comment"># Default for all endpoints</span>
+    <span class="token-param">window_seconds</span>=<span class="token-number">60</span>,
+    <span class="token-param">per_endpoint_limits</span>=<span class="token-function">{
+        "/api/v1/*": {"max_requests": 10, "window_seconds": 30},
+        "/api/v2/*": {"max_requests": 100, "window_seconds": 60},
+        "/healthz": {"max_requests": 1000, "window_seconds": 60},
+    }</span>,
+)`} /></pre>
+  </div>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      Tracking Requirements
+    </div>
+    <div class="alert-content">
+      Per-user tracking requires JWT auth to be enabled. Per-API-key tracking requires the API Keys module to be enabled.
+    </div>
   </div>
 
 </DocsLayout>

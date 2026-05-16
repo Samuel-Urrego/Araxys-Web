@@ -97,11 +97,14 @@ import '../styles/global.css';
       </tr>
     </thead>
     <tbody>
-      <tr><td><code>algorithm</code></td><td><code>str</code></td><td><code>"HS256"</code></td><td>JWT signing algorithm</td></tr>
+      <tr><td><code>algorithm</code></td><td><code>Literal["HS256", "RS256", "ES256"]</code></td><td><code>"HS256"</code></td><td>JWT signing algorithm (expanded)</td></tr>
       <tr><td><code>access_token_ttl_minutes</code></td><td><code>int</code></td><td><code>30</code></td><td>Access token time-to-live (≥1)</td></tr>
       <tr><td><code>refresh_token_ttl_days</code></td><td><code>int</code></td><td><code>7</code></td><td>Refresh token time-to-live (≥1)</td></tr>
       <tr><td><code>issuer</code></td><td><code>str | None</code></td><td><code>None</code></td><td>JWT <code>iss</code> claim</td></tr>
       <tr><td><code>audience</code></td><td><code>str | None</code></td><td><code>None</code></td><td>JWT <code>aud</code> claim</td></tr>
+      <tr><td><code>private_key</code></td><td><code>str | None</code></td><td><code>None</code></td><td>RSA/EC private key (PEM) for RS256/ES256</td></tr>
+      <tr><td><code>public_key</code></td><td><code>str | None</code></td><td><code>None</code></td><td>RSA/EC public key (PEM) for RS256/ES256</td></tr>
+      <tr><td><code>jwks_enabled</code></td><td><code>bool</code></td><td><code>False</code></td><td>Enable JWKS endpoint</td></tr>
     </tbody>
   </table>
 
@@ -142,6 +145,121 @@ import '../styles/global.css';
     <div class="alert-content">
       In-memory token storage means blacklisted JTIs are lost on server restart. Use Redis in production to persist token revocation across deployments.
     </div>
+  </div>
+
+  <h2 id="asymmetric-algorithms">Asymmetric Algorithms</h2>
+  <p>
+    Araxys supports <strong>RS256</strong> (RSA PKCS#1 v1.5 with SHA-256) and <strong>ES256</strong> (ECDSA P-256 with SHA-256) asymmetric signing algorithms in addition to the default <strong>HS256</strong> (HMAC with SHA-256). When using RS256 or ES256, you must provide a <code>private_key</code> and <code>public_key</code> in PEM format.
+  </p>
+  <p>
+    HS256 (symmetric) uses only the <code>secret_key</code> for both signing and verification. RS256/ES256 use a private key for signing and a public key for verification — the public key can be safely distributed to clients or third-party services.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> JWTConfig
+
+<span class="token-comment"># RS256 requires PEM-encoded RSA key pair</span>
+config = <span class="token-function">JWTConfig</span>(
+    <span class="token-param">algorithm</span>=<span class="token-string">"RS256"</span>,
+    <span class="token-param">private_key</span>=<span class="token-string">"""-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEF...
+-----END PRIVATE KEY-----"""</span>,
+    <span class="token-param">public_key</span>=<span class="token-string">"""-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOC...
+-----END PUBLIC KEY-----"""</span>,
+    <span class="token-param">access_token_ttl_minutes</span>=<span class="token-number">15</span>,
+)</code></pre>
+  </div>
+
+  <h2 id="jwks-endpoint">JWKS Endpoint</h2>
+  <p>
+    When <code>jwks_enabled=True</code>, Araxys registers a <code>/.well-known/jwks.json</code> route that returns the public key set in <strong>RFC 7517</strong> (JWKS) format. This allows third-party services to verify tokens issued by your Araxys shield without needing the public key configured directly.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> JWTConfig
+
+config = <span class="token-function">JWTConfig</span>(
+    <span class="token-param">algorithm</span>=<span class="token-string">"RS256"</span>,
+    <span class="token-param">private_key</span>=private_key_pem,
+    <span class="token-param">public_key</span>=public_key_pem,
+    <span class="token-param">jwks_enabled</span>=<span class="token-bool">True</span>,
+)</code></pre>
+  </div>
+
+  <p>The JWKS endpoint returns a response like:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">json</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`{
+  "keys": [
+    {
+      "kty": "RSA",
+      "use": "sig",
+      "alg": "RS256",
+      "kid": "araxys-key-1",
+      "n": "0vx7agoebGcQSu...",
+      "e": "AQAB"
+    }
+  ]
+}`} /></pre>
+  </div>
+
+  <h2 id="token-introspection">Token Introspection</h2>
+  <p>
+    Araxys implements a <strong>RFC 7662</strong> compliant Token Introspection endpoint. Send a <code>POST</code> request with the token to the introspection endpoint, and Araxys returns a JSON response with the <code>active</code> status and token metadata.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code>POST /auth/introspect
+Content-Type: application/x-www-form-urlencoded
+
+token=eyJhbGciOiJSUzI1NiIs...</code></pre>
+  </div>
+
+  <p>Response (active token):</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">json</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`{
+  "active": true,
+  "sub": "user_123",
+  "scope": "read write",
+  "token_type": "Bearer",
+  "exp": 1715000000,
+  "iat": 1714998200,
+  "client_id": null
+}`} /></pre>
+  </div>
+
+  <p>Response (expired or invalid token):</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">json</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`{
+  "active": false
+}`} /></pre>
   </div>
 
 </DocsLayout>

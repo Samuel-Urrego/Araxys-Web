@@ -1,0 +1,137 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Prometheus Metrics" activeNav="prometheus-metrics" description="9 counters + histogram exposed at configurable /metrics scrape endpoint.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys exposes <strong>9 Prometheus counters</strong> and <strong>1 histogram</strong> at a configurable HTTP path (default <code>/metrics</code>) in standard <strong>OpenMetrics format</strong>. Drop-in compatible with any Prometheus scrape configuration and Grafana dashboard.
+  </p>
+
+  <h2 id="how-it-works">How It Works</h2>
+
+  <h3 id="counters">Prometheus Counters</h3>
+  <p>Araxys maintains 9 counter metrics, each with appropriate labels for dimensional aggregation:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Metric Name</th>
+        <th>Labels</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>araxys_requests_total</code></td><td><code>method</code>, <code>path</code>, <code>status</code></td><td>Total processed requests</td></tr>
+      <tr><td><code>araxys_blocked_total</code></td><td><code>reason</code>, <code>ip</code></td><td>Blocked requests by reason</td></tr>
+      <tr><td><code>araxys_rate_limited_total</code></td><td><code>ip</code></td><td>Rate limited requests</td></tr>
+      <tr><td><code>araxys_honeypot_hits</code></td><td><code>path</code>, <code>ip</code></td><td>Honeypot trap triggers</td></tr>
+      <tr><td><code>araxys_sanitize_blocked</code></td><td><code>type</code></td><td>Sanitization blocks (SQLi, XSS, etc.)</td></tr>
+      <tr><td><code>araxys_auth_failures</code></td><td><code>reason</code></td><td>Authentication failures</td></tr>
+      <tr><td><code>araxys_token_rotations</code></td><td>—</td><td>JWT token rotations</td></tr>
+      <tr><td><code>araxys_audit_events</code></td><td><code>event_type</code></td><td>Audit log entries emitted</td></tr>
+      <tr><td><code>araxys_webhook_deliveries</code></td><td><code>status</code></td><td>Webhook delivery attempts</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="histogram">Request Duration Histogram</h3>
+  <p>
+    The <code>araxys_request_duration_seconds</code> histogram tracks request processing time with standard Prometheus buckets: <code>[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]</code>. Labeled with <code>method</code>, <code>path</code>, and <code>status</code> for fine-grained latency analysis.
+  </p>
+
+  <h3 id="scrape-endpoint">Scrape Endpoint</h3>
+  <p>
+    Metrics are exposed at the path configured via <code>metrics_path</code> (default <code>/metrics</code>). The endpoint returns standard OpenMetrics format suitable for direct Prometheus scraping.
+  </p>
+
+  <h2 id="configuration">Configuration</h2>
+  <p>Configure Prometheus metrics via the <code>PrometheusConfig</code> model passed to <code>AraxysConfig.prometheus</code>:</p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig, AraxysShield
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> PrometheusConfig
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">prometheus</span>=<span class="token-function">PrometheusConfig</span>(
+            <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+            <span class="token-param">metrics_path</span>=<span class="token-string">"/metrics"</span>,
+        ),
+    ),
+)</code></pre>
+  </div>
+
+  <h3 id="config-reference">Configuration Reference</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable metrics endpoint</td></tr>
+      <tr><td><code>metrics_path</code></td><td><code>str</code></td><td><code>"/metrics"</code></td><td>HTTP path for metrics endpoint</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      Standard Prometheus + Grafana
+    </div>
+    <div class="alert-content">
+      Araxys metrics use standard Prometheus naming and labels. Works out of the box with any Prometheus scrape configuration and Grafana dashboards. Exclude <code>/metrics</code> from rate limiting to avoid self-DoS.
+    </div>
+  </div>
+
+  <h2 id="integration">Integration</h2>
+  <p>
+    The metrics endpoint works with any standard <strong>Prometheus</strong> + <strong>Grafana</strong> monitoring stack. The default <code>/metrics</code> path should be added to <code>exclude_paths</code> in your rate limiting configuration to prevent scrape requests from counting against your rate limit budget.
+  </p>
+
+  <h3 id="prometheus-scrape">Prometheus Scrape Configuration</h3>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">yaml</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># prometheus.yml</span>
+scrape_configs:
+  - job_name: <span class="token-string">"araxys"</span>
+    scrape_interval: 15s
+    static_configs:
+      - targets: [<span class="token-string">"localhost:8000"</span>]
+    metrics_path: /metrics</code></pre>
+  </div>
+
+  <h3 id="grafana">Grafana Dashboard Reference</h3>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">promql</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Rate of requests per second</span>
+<span class="token-function">rate</span>(araxys_requests_total[5m])
+
+<span class="token-comment"># Rate limited requests (top offenders)</span>
+<span class="token-function">topk</span>(<span class="token-number">10</span>, <span class="token-function">sum by</span>(ip) (<span class="token-function">rate</span>(araxys_rate_limited_total[5m])))
+
+<span class="token-comment"># P95 latency</span>
+<span class="token-function">histogram_quantile</span>(<span class="token-number">0.95</span>, <span class="token-function">sum by</span>(le) (<span class="token-function">rate</span>(araxys_request_duration_seconds_bucket[5m])))</code></pre>
+  </div>
+
+</DocsLayout>

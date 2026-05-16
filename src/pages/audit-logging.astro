@@ -119,6 +119,11 @@ config = <span class="token-function">AraxysConfig</span>(
       <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable/disable audit logging</td></tr>
       <tr><td><code>encrypt</code></td><td><code>bool</code></td><td><code>True</code></td><td>Encrypt log entries with AES-256-GCM</td></tr>
       <tr><td><code>log_file</code></td><td><code>str | None</code></td><td><code>None</code></td><td>File path for audit log output (None = stdout only)</td></tr>
+      <tr><td><code>async_write</code></td><td><code>bool</code></td><td><code>True</code></td><td>Use async file I/O (aiofiles)</td></tr>
+      <tr><td><code>rotation_max_bytes</code></td><td><code>int | None</code></td><td><code>None</code></td><td>Max bytes before log rotation (None = no rotation)</td></tr>
+      <tr><td><code>rotation_backups</code></td><td><code>int</code></td><td><code>3</code></td><td>Number of rotated backups to keep</td></tr>
+      <tr><td><code>pii_fields</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>Field paths to mask (dot-notation)</td></tr>
+      <tr><td><code>ship_to_url</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Webhook URL for log shipping</td></tr>
     </tbody>
   </table>
 
@@ -130,6 +135,73 @@ config = <span class="token-function">AraxysConfig</span>(
     <div class="alert-content">
       The encryption key is derived from your <code>secret_key</code> in <code>AraxysConfig</code>. Use a strong, unique key generated with <code>openssl rand -hex 32</code>. Never hardcode it in source control.
     </div>
+  </div>
+
+  <h2 id="async-io">Async I/O</h2>
+  <p>
+    When <code>async_write=True</code> (default), Araxys uses <strong>aiofiles</strong> for non-blocking file writes. The request handler is never blocked by audit I/O — log entries are written asynchronously in the background.
+  </p>
+
+  <h2 id="log-rotation">Log Rotation</h2>
+  <p>
+    Araxys supports <strong>size-based log rotation</strong>. Set <code>rotation_max_bytes</code> to the desired threshold (e.g., 10 MB), and <code>rotation_backups</code> to the number of backup files to keep. Rotated files are named sequentially — <code>audit.log.1</code>, <code>audit.log.2</code>, <code>audit.log.3</code> — with the oldest file removed when the backup count is exceeded.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># 10 MB rotation, keep 5 backups</span>
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"..."</span>,
+    <span class="token-param">audit</span>=<span class="token-function">AuditConfig</span>(
+        <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+        <span class="token-param">encrypt</span>=<span class="token-bool">True</span>,
+        <span class="token-param">log_file</span>=<span class="token-string">"/var/log/araxys/audit.log"</span>,
+        <span class="token-param">rotation_max_bytes</span>=<span class="token-number">10_485_760</span>,
+        <span class="token-param">rotation_backups</span>=<span class="token-number">5</span>,
+    ),
+)</code></pre>
+  </div>
+
+  <h2 id="pii-masking">PII Masking</h2>
+  <p>
+    Protect sensitive user data with <strong>recursive PII field masking</strong>. Configure <code>pii_fields</code> with dot-notation paths like <code>"user.email"</code> or <code>"request.phone"</code>. Araxys traverses the <code>AuditEntry.metadata</code> dict recursively and replaces matching field values with <code>***</code>.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code>config = <span class="token-function">AuditConfig</span>(
+    <span class="token-param">pii_fields</span>=[
+        <span class="token-string">"user.email"</span>,
+        <span class="token-string">"user.phone"</span>,
+        <span class="token-string">"request.ip"</span>,
+        <span class="token-string">"metadata.ssn"</span>,
+    ],
+)</code></pre>
+  </div>
+
+  <h2 id="log-shipping">Log Shipping</h2>
+  <p>
+    Forward audit events to an <strong>external collector</strong> via the <code>ship_to_url</code> setting. When configured, each audit event is POSTed as JSON to the specified URL using <strong>httpx</strong> (async HTTP client). The payload is HMAC-SHA256 signed with the Araxys <code>secret_key</code> for receiver verification.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code>config = <span class="token-function">AuditConfig</span>(
+    <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+    <span class="token-param">encrypt</span>=<span class="token-bool">True</span>,
+    <span class="token-param">log_file</span>=<span class="token-string">"/var/log/araxys/audit.log"</span>,
+    <span class="token-param">ship_to_url</span>=<span class="token-string">"https://log-collector.example.com/audit"</span>,
+    <span class="token-param">async_write</span>=<span class="token-bool">True</span>,
+)</code></pre>
   </div>
 
 </DocsLayout>
