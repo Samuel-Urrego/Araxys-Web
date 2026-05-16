@@ -43,7 +43,8 @@ import '../styles/global.css';
 
 app = <span class="token-function">FastAPI</span>()
 shield = <span class="token-function">AraxysShield</span>(app, <span class="token-function">AraxysConfig</span>(<span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>))
-<span class="token-comment"># That's it. Your API is now protected.</span></code></pre>
+<span class="token-comment"># That's it. Your API is now protected.</span>
+<span class="token-comment"># Call shield.shutdown() on app shutdown for graceful cleanup</span></code></pre>
     </div>
   </div>
 
@@ -66,7 +67,7 @@ shield = <span class="token-function">AraxysShield</span>(app, <span class="toke
   </div>
 
   <h2 id="modules">Security Modules</h2>
-  <p>Araxys ships with 7 production-ready modules, each independently configurable:</p>
+  <p>Araxys ships with 15+ production-ready modules, each independently configurable:</p>
 
   <div class="not-prose grid grid-cols-1 sm:grid-cols-2 gap-3 my-6">
     <a href="/rate-limiting" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
@@ -132,6 +133,70 @@ shield = <span class="token-function">AraxysShield</span>(app, <span class="toke
       </div>
       <p class="text-xs text-text-muted leading-relaxed">Scalable storage for API keys and rate limits across instances.</p>
     </a>
+
+    <a href="/brute-force-protection" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">lock_reset</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Brute Force Protection</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Account lockout with 6 password rules and HIBP breach detection.</p>
+    </a>
+
+    <a href="/csrf-protection" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">cookie</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">CSRF Protection</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Double-submit cookie pattern with constant-time token validation.</p>
+    </a>
+
+    <a href="/session-management" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">groups</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Session Management</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Max concurrent enforcement, revocation, and background cleanup.</p>
+    </a>
+
+    <a href="/cors-policy" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">language</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">CORS Policy</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Per-origin allowlist with preflight handling and fail-closed default.</p>
+    </a>
+
+    <a href="/ip-access-control" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">block</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">IP Access Control</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Allow, block, or hybrid modes with IPv4 and IPv6 CIDR support.</p>
+    </a>
+
+    <a href="/secure-headers" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">shield</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Secure Headers</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">CSP builder, COOP/COEP/CORP, hide server, and OWASP-recommended headers.</p>
+    </a>
+
+    <a href="/opentelemetry" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">timeline</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">OpenTelemetry</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">Span-per-middleware tracing with graceful no-op when SDK is absent.</p>
+    </a>
+
+    <a href="/prometheus-metrics" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">monitoring</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Prometheus Metrics</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">9 counters + histogram exposed at configurable /metrics endpoint.</p>
+    </a>
   </div>
 
   <h2 id="installation">Installation</h2>
@@ -146,6 +211,9 @@ shield = <span class="token-function">AraxysShield</span>(app, <span class="toke
 
 <span class="token-comment"># With Redis support (recommended for production)</span>
 <span class="token-function">pip</span> install araxys[redis]
+
+<span class="token-comment"># Everything: all modules + Redis + OTEL + Prometheus</span>
+<span class="token-function">pip</span> install araxys[all]
 
 <span class="token-comment"># Development</span>
 <span class="token-function">pip</span> install araxys[dev]</code></pre>
@@ -169,7 +237,8 @@ shield = <span class="token-function">AraxysShield</span>(app, <span class="toke
       <span class="code-block-lang">python</span>
       <button class="code-block-copy">Copy</button>
     </div>
-    <pre><code set:html={`<span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> FastAPI
+    <pre><code set:html={`<span class="token-comment"># Requires: pip install araxys[all]</span>
+<span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> FastAPI
 <span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysShield, AraxysConfig
 
 app = <span class="token-function">FastAPI</span>()
@@ -184,6 +253,10 @@ shield = <span class="token-function">AraxysShield</span>(
         <span class="token-param">secure_headers</span>=<span class="token-bool">True</span>,
         <span class="token-param">sanitize</span>=<span class="token-bool">True</span>,
         <span class="token-param">audit</span>={"encrypt": <span class="token-bool">True</span>, "log_file": <span class="token-string">"audit.log"</span>},
+        <span class="token-param">cors</span>={"allowed_origins": [<span class="token-string">"https://app.example.com"</span>]},
+        <span class="token-param">brute_force</span>={"max_attempts": <span class="token-number">5</span>, "lockout_duration": <span class="token-number">900</span>},
+        <span class="token-param">prometheus</span>=<span class="token-bool">True</span>,
+        <span class="token-comment"># See Configuration page for all new v0.4.0 options</span>
     ),
 )`} /></pre>
   </div>
@@ -208,6 +281,26 @@ shield = <span class="token-function">AraxysShield</span>(
 ├── honeypot/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">humidity_mid</span> Trap endpoints</span>
 │   ├── trap.py         <span class="token-comment"># Route registration + auto-ban</span>
 │   └── middleware.py   <span class="token-comment"># IP ban enforcement</span>
+├── brute_force/         <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">lock_reset</span> Brute force protection</span>
+│   ├── checker.py      <span class="token-comment"># Password rules + HIBP check</span>
+│   └── middleware.py   <span class="token-comment"># Lockout enforcement</span>
+├── session/             <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">groups</span> Session management</span>
+│   ├── manager.py      <span class="token-comment"># CRUD + concurrent enforcement</span>
+│   └── storage.py      <span class="token-comment"># InMemory + Redis backends</span>
+├── csrf/                <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">cookie</span> CSRF protection</span>
+│   └── middleware.py   <span class="token-comment"># Double-submit cookie validation</span>
+├── cors/                <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">language</span> CORS policy</span>
+│   └── middleware.py   <span class="token-comment"># Per-origin allowlist + preflight</span>
+├── ip_access/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">block</span> IP access control</span>
+│   └── middleware.py   <span class="token-comment"># CIDR matching + allow/block/hybrid</span>
+├── telemetry/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">timeline</span> OpenTelemetry tracing</span>
+│   └── middleware.py   <span class="token-comment"># Span-per-middleware + no-op fallback</span>
+├── webhooks/            <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">webhook</span> Security webhooks</span>
+│   ├── bus.py          <span class="token-comment"># Unified event bus</span>
+│   └── delivery.py     <span class="token-comment"># HTTP delivery + retry</span>
+├── prometheus/          <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">monitoring</span> Prometheus metrics</span>
+│   ├── metrics.py      <span class="token-comment"># 9 counters + histogram</span>
+│   └── middleware.py   <span class="token-comment"># /metrics endpoint</span>
 ├── api_keys/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">vpn_key</span> API Key management</span>
 │   ├── models.py       <span class="token-comment"># Pydantic models</span>
 │   ├── manager.py      <span class="token-comment"># CRUD + verification</span>
@@ -236,7 +329,7 @@ shield = <span class="token-function">AraxysShield</span>(
       Middleware Order Matters
     </div>
     <div class="alert-content">
-      ASGI middleware executes in <strong>reverse registration order</strong>. Araxys registers them inner→outer so the execution order is: <strong>Secure Headers → Honeypot → Rate Limit → Sanitize → Your Handler</strong>.
+      ASGI middleware executes in <strong>reverse registration order</strong>. Araxys registers them inner→outer so the execution order is: <strong>CORS → SecureHeaders → OpenTelemetry → RateLimit → BruteForce → IP Access → Honeypot → Sanitize → Your Handler</strong>.
     </div>
   </div>
 

@@ -18,17 +18,31 @@ const navSections = [
     label: "Security Modules",
     items: [
       { href: "/rate-limiting", icon: "traffic", label: "Rate Limiting", id: "rate-limiting" },
+      { href: "/brute-force-protection", icon: "lock_reset", label: "Brute Force Protection", id: "brute-force-protection" },
       { href: "/honeypot", icon: "humidity_mid", label: "Honeypot Endpoints", id: "honeypot" },
       { href: "/api-keys", icon: "vpn_key", label: "API Keys", id: "api-keys" },
       { href: "/jwt-auth", icon: "confirmation_number", label: "JWT & Token Rotation", id: "jwt-auth" },
+      { href: "/csrf-protection", icon: "cookie", label: "CSRF Protection", id: "csrf-protection" },
+      { href: "/session-management", icon: "groups", label: "Session Management", id: "session-management" },
       { href: "/sanitization", icon: "cleaning_services", label: "Sanitization", id: "sanitization" },
+      { href: "/secure-headers", icon: "shield", label: "Secure Headers", id: "secure-headers" },
+      { href: "/cors-policy", icon: "language", label: "CORS Policy", id: "cors-policy" },
+      { href: "/ip-access-control", icon: "block", label: "IP Access Control", id: "ip-access-control" },
       { href: "/audit-logging", icon: "list_alt", label: "Audit Logging", id: "audit-logging" },
-      { href: "/cli", icon: "terminal", label: "Araxys CLI", id: "cli" },
     ],
   },
   {
-    label: "Reference",
+    label: "Observability",
     items: [
+      { href: "/opentelemetry", icon: "timeline", label: "OpenTelemetry", id: "opentelemetry" },
+      { href: "/prometheus-metrics", icon: "monitoring", label: "Prometheus Metrics", id: "prometheus-metrics" },
+      { href: "/security-webhooks", icon: "webhook", label: "Security Webhooks", id: "security-webhooks" },
+    ],
+  },
+  {
+    label: "Tools",
+    items: [
+      { href: "/cli", icon: "terminal", label: "Araxys CLI", id: "cli" },
       { href: "/configuration", icon: "settings", label: "Configuration", id: "configuration" },
     ],
   },
@@ -66,7 +80,7 @@ const navSections = [
         <img src="/araxyslogo-nobg.png" alt="Araxys" class="h-12 w-auto logo-invert" />
         <span class="font-semibold text-text-primary text-[15px] tracking-tight" style="font-family: var(--font-headline)">Araxys</span>
       </a>
-      <span class="label-sm text-text-muted bg-surface-high px-2 py-0.5 rounded-sm hidden sm:inline-block">v0.2.1</span>
+      <span class="label-sm text-text-muted bg-surface-high px-2 py-0.5 rounded-sm hidden sm:inline-block">v0.4.0</span>
     </div>
 
     <div class="flex items-center gap-3">
