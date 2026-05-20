@@ -96,11 +96,11 @@ config = <span class="token-function">AraxysConfig</span>(
     <tbody>
       <tr><td><code>GET</code></td><td><code>/admin/health</code></td><td>Module health status for all active security modules</td></tr>
       <tr><td><code>GET</code></td><td><code>/admin/sessions?user_id=X</code></td><td>List active sessions for a user</td></tr>
-      <tr><td><code>DELETE</code></td><td><code>/admin/sessions/{id}</code></td><td>Revoke a session by ID</td></tr>
+      <tr><td><code>DELETE</code></td><td><code>/admin/sessions/{'{'}id{'}'}</code></td><td>Revoke a session by ID</td></tr>
       <tr><td><code>GET</code></td><td><code>/admin/ips/blocked</code></td><td>List banned IPs with remaining ban time</td></tr>
-      <tr><td><code>DELETE</code></td><td><code>/admin/ips/blocked/{ip}</code></td><td>Unban an IP address</td></tr>
+      <tr><td><code>DELETE</code></td><td><code>/admin/ips/blocked/{'{'}ip{'}'}</code></td><td>Unban an IP address</td></tr>
       <tr><td><code>GET</code></td><td><code>/admin/api-keys?owner=X</code></td><td>List API keys with scopes, expiry, and last used</td></tr>
-      <tr><td><code>POST</code></td><td><code>/admin/api-keys/{prefix}/rotate</code></td><td>Rotate an API key (revoke old, issue new)</td></tr>
+      <tr><td><code>POST</code></td><td><code>/admin/api-keys/{'{'}prefix{'}'}/rotate</code></td><td>Rotate an API key (revoke old, issue new)</td></tr>
       <tr><td><code>GET</code></td><td><code>/admin/rate-limit/stats</code></td><td>Current rate limit counters and window info</td></tr>
     </tbody>
   </table>
@@ -170,7 +170,7 @@ history = ph.<span class="token-function">add</span>(<span class="token-string">
 
   <h3 id="v091-csp-nonce">CSP Nonce Injection</h3>
   <p>
-    Generates a <strong>per-request, cryptographically random CSP nonce</strong> and injects it into the <code>Content-Security-Policy</code> header. The nonce is placed in <code>request.state.csp_nonce</code> so templates can reference it to whitelist inline scripts/styles. Add <code>'nonce-{csp_nonce}'</code> to your CSP directives and Araxys replaces the placeholder with a fresh value on every response.
+    Generates a <strong>per-request, cryptographically random CSP nonce</strong> and injects it into the <code>Content-Security-Policy</code> header. The nonce is placed in <code>request.state.csp_nonce</code> so templates can reference it to whitelist inline scripts/styles. Add <code>'nonce-{'{'}csp_nonce{'}'}'</code> to your CSP directives and Araxys replaces the placeholder with a fresh value on every response.
   </p>
 
   <div class="code-block">
@@ -295,7 +295,7 @@ engine.<span class="token-function">has_permission</span>([<span class="token-st
 
   <h3 id="v090-oauth">OAuth2 / OIDC with PKCE</h3>
   <p>
-    Full OAuth2 Authorization Code flow with <strong>PKCE (RFC 7636) always enabled</strong>. Supports HMAC-SHA256 state signing for CSRF protection, token exchange, token refresh, and UserInfo endpoint (OIDC). Ships with <strong>pre-configured providers</strong> for Google, GitHub, and Microsoft Entra ID (Azure AD). A FastAPI router factory mounts <code>/oauth/login/{provider}</code> and <code>/oauth/callback/{provider}</code> automatically.
+    Full OAuth2 Authorization Code flow with <strong>PKCE (RFC 7636) always enabled</strong>. Supports HMAC-SHA256 state signing for CSRF protection, token exchange, token refresh, and UserInfo endpoint (OIDC). Ships with <strong>pre-configured providers</strong> for Google, GitHub, and Microsoft Entra ID (Azure AD). A FastAPI router factory mounts <code>/oauth/login/{'{'}provider{'}'}</code> and <code>/oauth/callback/{'{'}provider{'}'}</code> automatically.
   </p>
 
   <div class="code-block">
