@@ -1,0 +1,401 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="What's New" activeNav="whats-new" description="What's new in Araxys v0.9 — MFA, RBAC, OAuth2/OIDC, Admin API, PostgreSQL pool, and more.">
+
+  <h2 id="overview">Araxys v0.9 — The Enterprise Release</h2>
+  <p>
+    Version <strong>0.9.x</strong> is the biggest release since Araxys launched. Four new modules (<strong>MFA, RBAC, OAuth2/OIDC, Admin API</strong>), a production-grade <strong>PostgreSQL connection pool</strong>, and hardening across every existing module — token families, progressive brute force delays, CSP nonces, API key IP restrictions, and more.
+  </p>
+
+  <div class="not-prose grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 my-6">
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">MFA, RBAC, OAuth2/OIDC, PostgreSQL pool</p>
+    </div>
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.1</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">CSP nonce, HIBP fail-closed, IP restrictions, token family</p>
+    </div>
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.2</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">Admin API, password history, token family verification</p>
+    </div>
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.3</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">JWT nbf claim, brute force progressive delays</p>
+    </div>
+  </div>
+
+  <!-- v0.9.3 -->
+  <h2 id="v093">v0.9.3 — Progressive Delays & JWT nbf</h2>
+
+  <h3 id="v093-progressive">Brute Force Progressive Delays</h3>
+  <p>
+    Before the hard lockout (which blocks the user entirely), Araxys now applies <strong>progressive incremental delays</strong> between failed attempts: 1s after the first failure, 2s after the second, 4s after the third — doubling up to a cap of 30 seconds.
+  </p>
+  <p>
+    This slows down brute force attacks <strong>without</strong> completely locking out legitimate users who may have simply mistyped their password. Traditional lockouts create a DoS vector — an attacker can lock out real users by intentionally triggering failures. Progressive delays make brute force impractical while keeping the account usable.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig
+
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">brute_force</span>={
+        <span class="token-param">"enabled"</span>: <span class="token-bool">True</span>,
+        <span class="token-param">"max_attempts"</span>: <span class="token-number">5</span>,
+        <span class="token-param">"progressive_delay"</span>: <span class="token-bool">True</span>,  <span class="token-comment"># NEW in v0.9.3</span>
+    },
+)</code></pre>
+  </div>
+
+  <h3 id="v093-nbf">JWT <code>nbf</code> (Not Before) Claim</h3>
+  <p>
+    All generated JWT tokens now include the <code>nbf</code> (Not Before) claim, set to the current time. This completes the temporal validation triad (<code>exp</code>, <code>iat</code>, <code>nbf</code>) for full RFC compliance. The <code>nbf</code> claim enables scenarios where tokens are issued now but should become valid at a future time — scheduled access, delayed activation, or clock-skew tolerant validation via <code>leeway_seconds</code>.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig
+
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">jwt</span>={
+        <span class="token-param">"leeway_seconds"</span>: <span class="token-number">30</span>,  <span class="token-comment"># Clock skew tolerance for exp/iat/nbf</span>
+    },
+)</code></pre>
+  </div>
+
+  <!-- v0.9.2 -->
+  <h2 id="v092">v0.9.2 — Admin API & Token Security</h2>
+
+  <h3 id="v092-admin">Admin API</h3>
+  <p>
+    A FastAPI router factory (<code>create_admin_router</code>) that exposes inspection and management endpoints for all Araxys modules at runtime — no external dashboard needed. Includes health checks, session management, IP ban management, API key rotation, and rate limit statistics. All endpoints return structured JSON and are designed to be protected by admin-scoped authentication.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Method</th>
+        <th>Endpoint</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>GET</code></td><td><code>/admin/health</code></td><td>Module health status for all active security modules</td></tr>
+      <tr><td><code>GET</code></td><td><code>/admin/sessions?user_id=X</code></td><td>List active sessions for a user</td></tr>
+      <tr><td><code>DELETE</code></td><td><code>/admin/sessions/{id}</code></td><td>Revoke a session by ID</td></tr>
+      <tr><td><code>GET</code></td><td><code>/admin/ips/blocked</code></td><td>List banned IPs with remaining ban time</td></tr>
+      <tr><td><code>DELETE</code></td><td><code>/admin/ips/blocked/{ip}</code></td><td>Unban an IP address</td></tr>
+      <tr><td><code>GET</code></td><td><code>/admin/api-keys?owner=X</code></td><td>List API keys with scopes, expiry, and last used</td></tr>
+      <tr><td><code>POST</code></td><td><code>/admin/api-keys/{prefix}/rotate</code></td><td>Rotate an API key (revoke old, issue new)</td></tr>
+      <tr><td><code>GET</code></td><td><code>/admin/rate-limit/stats</code></td><td>Current rate limit counters and window info</td></tr>
+    </tbody>
+  </table>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> FastAPI
+<span class="token-keyword">from</span> araxys.admin <span class="token-keyword">import</span> create_admin_router
+<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysShield, AraxysConfig
+
+app = <span class="token-function">FastAPI</span>()
+config = <span class="token-function">AraxysConfig</span>(<span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>)
+shield = <span class="token-function">AraxysShield</span>(app, config)
+
+<span class="token-comment"># Mount admin router — protect with your auth middleware</span>
+app.<span class="token-function">include_router</span>(<span class="token-function">create_admin_router</span>(shield))</code></pre>
+  </div>
+
+  <h3 id="v092-token-family">Token Family Verification</h3>
+  <p>
+    Refresh tokens are now organized into <strong>families</strong>. Each token pair carries a unique <code>family</code> UUID. On rotation, if a token from a previously-blacklisted family is presented, the <strong>entire family is revoked</strong> — indicating possible token theft. A <code>CRITICAL</code> log entry and <code>TOKEN_REVOKED</code> audit event are emitted automatically.
+  </p>
+  <p>
+    This detects the classic refresh token theft scenario: if an attacker and the legitimate user both rotate tokens from the same family, the reuse is caught, both parties are logged out, and the incident is flagged.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Token rotation with family verification (automatic)</span>
+<span class="token-decorator">@app.post</span>(<span class="token-string">"/auth/refresh"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">refresh</span>(<span class="token-param">refresh_token</span>: <span class="token-builtin">str</span>):
+    new_pair = <span class="token-keyword">await</span> shield.jwt_manager.<span class="token-function">rotate_tokens</span>(refresh_token)
+    <span class="token-comment"># If the family was compromised, TokenRevoked is raised automatically</span>
+    <span class="token-keyword">return</span> new_pair.<span class="token-function">model_dump</span>()</code></pre>
+  </div>
+
+  <h3 id="v092-password-history">Password History</h3>
+  <p>
+    Prevents users from cycling through the same passwords by storing SHA-256 hashes of previous passwords. Configurable history depth (default: last 5 passwords). Provides <code>check()</code> — returns <code>True</code> if a password was used before — and <code>add()</code> — appends the hash and trims to <code>max_history</code>.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys.brute_force.password_policy <span class="token-keyword">import</span> PasswordHistory
+
+ph = <span class="token-function">PasswordHistory</span>(<span class="token-param">max_history</span>=<span class="token-number">5</span>)
+
+<span class="token-comment"># Before setting a new password</span>
+<span class="token-keyword">if</span> ph.<span class="token-function">check</span>(<span class="token-string">"new_password"</span>, old_hashes):
+    <span class="token-keyword">raise</span> <span class="token-function">ValueError</span>(<span class="token-string">"Password was used before — pick a different one"</span>)
+
+<span class="token-comment"># After setting</span>
+history = ph.<span class="token-function">add</span>(<span class="token-string">"new_password"</span>, old_hashes)</code></pre>
+  </div>
+
+  <!-- v0.9.1 -->
+  <h2 id="v091">v0.9.1 — Hardening & Observability</h2>
+
+  <h3 id="v091-csp-nonce">CSP Nonce Injection</h3>
+  <p>
+    Generates a <strong>per-request, cryptographically random CSP nonce</strong> and injects it into the <code>Content-Security-Policy</code> header. The nonce is placed in <code>request.state.csp_nonce</code> so templates can reference it to whitelist inline scripts/styles. Add <code>'nonce-{csp_nonce}'</code> to your CSP directives and Araxys replaces the placeholder with a fresh value on every response.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code>config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">secure_headers</span>={
+        <span class="token-param">"csp_directives"</span>: {
+            <span class="token-param">"script_src"</span>: [<span class="token-string">"'self'"</span>, <span class="token-string">"'nonce-{csp_nonce}'"</span>],
+            <span class="token-param">"style_src"</span>: [<span class="token-string">"'self'"</span>, <span class="token-string">"'nonce-{csp_nonce}'"</span>],
+        },
+    },
+)
+<span class="token-comment"># In templates: &lt;script nonce="{{ request.state.csp_nonce }}"&gt;...&lt;/script&gt;</span></code></pre>
+  </div>
+
+  <h3 id="v091-hibp-fail-closed">HIBP Fail-Closed Mode</h3>
+  <p>
+    The HaveIBeenPwned password check now supports a <strong>fail-closed</strong> mode. When <code>fail_closed=True</code> and the HIBP API is unreachable, an exception is raised instead of silently allowing the password. This prevents an attacker from DDoSing the HIBP API to bypass breach detection.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code>config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">brute_force</span>={
+        <span class="token-param">"enabled"</span>: <span class="token-bool">True</span>,
+        <span class="token-param">"check_hibp"</span>: <span class="token-bool">True</span>,
+        <span class="token-param">"hibp_fail_closed"</span>: <span class="token-bool">True</span>,  <span class="token-comment"># NEW: reject on API failure</span>
+    },
+)</code></pre>
+  </div>
+
+  <h3 id="v091-ip-restriction">API Key IP Restriction</h3>
+  <p>
+    API keys can now be restricted to specific IPs or CIDR ranges. Each <code>APIKeyRecord</code> carries an <code>allowed_ips</code> list. During verification, if the list is non-empty and the client IP is provided, the key is rejected from unauthorized networks — defense-in-depth even if the <code>sk_</code> key is leaked.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Create a key restricted to internal networks only</span>
+result = <span class="token-keyword">await</span> shield.api_key_manager.<span class="token-function">create_key</span>(
+    <span class="token-param">owner</span>=<span class="token-string">"service-worker"</span>,
+    <span class="token-param">scopes</span>=[<span class="token-string">"read"</span>],
+    <span class="token-param">allowed_ips</span>=[<span class="token-string">"10.0.0.0/8"</span>, <span class="token-string">"192.168.1.100"</span>],
+)
+<span class="token-comment"># Key only works from 10.x.x.x or 192.168.1.100</span></code></pre>
+  </div>
+
+  <h3 id="v091-inmemory-warning">InMemory Backend Warning</h3>
+  <p>
+    When AraxysShield initializes <strong>without</strong> Redis configured, it now logs a structured <code>WARNING</code> message: <em>"Using InMemory backends — NOT suitable for multi-worker deployments. Each worker has independent counters."</em> This catches the most common production misconfiguration before it becomes an incident.
+  </p>
+
+  <!-- v0.9.0 -->
+  <h2 id="v090">v0.9.0 — Four New Modules</h2>
+
+  <h3 id="v090-mfa">MFA / TOTP</h3>
+  <p>
+    <strong>Zero external dependencies</strong> — pure Python RFC 6238 implementation. Generates cryptographically secure base32 secrets, <code>otpauth://</code> QR-code URIs for authenticator apps (Google Authenticator, Authy), verifies TOTP codes with a configurable time window for clock drift, and generates one-time recovery codes stored as SHA-256 hashes.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys.mfa.manager <span class="token-keyword">import</span> MFAManager
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> MFAConfig
+
+config = <span class="token-function">MFAConfig</span>(<span class="token-param">enabled</span>=<span class="token-bool">True</span>)
+manager = <span class="token-function">MFAManager</span>(config, <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key!"</span>)
+
+<span class="token-comment"># Setup: generate secret + QR URI + recovery codes</span>
+secret, qr_uri, recovery_codes = manager.<span class="token-function">setup</span>(<span class="token-string">"user-123"</span>)
+<span class="token-comment"># Show qr_uri to user, store recovery_codes securely</span>
+
+<span class="token-comment"># Verify TOTP code from authenticator app</span>
+<span class="token-keyword">if</span> manager.<span class="token-function">verify</span>(secret, <span class="token-string">"123456"</span>):
+    <span class="token-keyword">return</span> {<span class="token-string">"status"</span>: <span class="token-string">"ok"</span>}</code></pre>
+  </div>
+
+  <h3 id="v090-rbac">RBAC (Role-Based Access Control)</h3>
+  <p>
+    A lightweight hierarchical RBAC engine using <strong><code>resource:action</code></strong> permission strings with wildcard support. Roles inherit from other roles (e.g., <code>editor</code> inherits from <code>viewer</code>), forming permission hierarchies. Three FastAPI dependency factories enforce permissions at the endpoint level, raising HTTP 403 on denial.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys.rbac <span class="token-keyword">import</span> RBACEngine, require_permission
+
+engine = <span class="token-function">RBACEngine</span>(<span class="token-param">roles</span>={
+    <span class="token-string">"viewer"</span>: {<span class="token-string">"permissions"</span>: [<span class="token-string">"articles:read"</span>]},
+    <span class="token-string">"editor"</span>: {<span class="token-string">"permissions"</span>: [<span class="token-string">"articles:write"</span>, <span class="token-string">"comments:*"</span>], <span class="token-string">"inherits"</span>: [<span class="token-string">"viewer"</span>]},
+    <span class="token-string">"admin"</span>:  {<span class="token-string">"permissions"</span>: [<span class="token-string">"*"</span>], <span class="token-string">"inherits"</span>: [<span class="token-string">"editor"</span>]},
+})
+
+engine.<span class="token-function">has_permission</span>([<span class="token-string">"editor"</span>], <span class="token-string">"articles:read"</span>)   <span class="token-comment"># True (inherited)</span>
+engine.<span class="token-function">has_permission</span>([<span class="token-string">"editor"</span>], <span class="token-string">"articles:write"</span>)  <span class="token-comment"># True (own)</span>
+engine.<span class="token-function">has_permission</span>([<span class="token-string">"viewer"</span>], <span class="token-string">"articles:write"</span>)  <span class="token-comment"># False</span>
+engine.<span class="token-function">has_permission</span>([<span class="token-string">"admin"</span>], <span class="token-string">"users:delete"</span>)     <span class="token-comment"># True (wildcard)</span>
+
+<span class="token-comment"># Protect endpoints</span>
+<span class="token-decorator">@app.get</span>(<span class="token-string">"/articles"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">list_articles</span>(
+    <span class="token-param">_</span>: <span class="token-builtin">None</span> = <span class="token-function">Depends</span>(<span class="token-function">require_permission</span>(engine, <span class="token-string">"articles:read"</span>, get_roles=get_user_roles)),
+):
+    <span class="token-keyword">return</span> {<span class="token-string">"articles"</span>: [...]}</code></pre>
+  </div>
+
+  <h3 id="v090-oauth">OAuth2 / OIDC with PKCE</h3>
+  <p>
+    Full OAuth2 Authorization Code flow with <strong>PKCE (RFC 7636) always enabled</strong>. Supports HMAC-SHA256 state signing for CSRF protection, token exchange, token refresh, and UserInfo endpoint (OIDC). Ships with <strong>pre-configured providers</strong> for Google, GitHub, and Microsoft Entra ID (Azure AD). A FastAPI router factory mounts <code>/oauth/login/{provider}</code> and <code>/oauth/callback/{provider}</code> automatically.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys.oauth <span class="token-keyword">import</span> OAuth2Flow, google, create_oauth_router
+
+provider = <span class="token-function">google</span>(
+    <span class="token-param">client_id</span>=<span class="token-string">"...apps.googleusercontent.com"</span>,
+    <span class="token-param">client_secret</span>=<span class="token-string">"GOCSPX-..."</span>,
+)
+flow = <span class="token-function">OAuth2Flow</span>(provider, <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key!"</span>)
+
+<span class="token-comment"># Step 1: Redirect user to provider (PKCE enforced)</span>
+url, state, pkce_verifier = flow.<span class="token-function">authorization_url</span>(<span class="token-string">"https://app.example.com/callback"</span>)
+
+<span class="token-comment"># Step 2: Exchange code for tokens</span>
+tokens = <span class="token-keyword">await</span> flow.<span class="token-function">exchange_code</span>(code, redirect_uri, pkce_verifier)
+
+<span class="token-comment"># Step 3: Fetch user info</span>
+user = <span class="token-keyword">await</span> flow.<span class="token-function">userinfo</span>(tokens.access_token)
+
+<span class="token-comment"># Mount pre-built router</span>
+app.<span class="token-function">include_router</span>(<span class="token-function">create_oauth_router</span>({<span class="token-string">"google"</span>: flow}))
+<span class="token-comment"># Now: GET /oauth/login/google, GET /oauth/callback/google</span></code></pre>
+  </div>
+
+  <h3 id="v090-pg-pool">PostgreSQL Connection Pool</h3>
+  <p>
+    A managed async PostgreSQL connection pool built on <code>asyncpg</code> with TLS/SSL support, periodic health checks (<code>SELECT 1</code> liveness), acquire timeouts, idle timeout, configurable pool sizes, and graceful shutdown. Wired through <code>DatabaseSecurityConfig.pg_pool</code>.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig
+
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">db_security</span>={
+        <span class="token-param">"enabled"</span>: <span class="token-bool">True</span>,
+        <span class="token-param">"pg_pool"</span>: {
+            <span class="token-param">"enabled"</span>: <span class="token-bool">True</span>,
+            <span class="token-param">"dsn"</span>: <span class="token-string">"postgresql://user:pass@localhost:5432/mydb"</span>,
+            <span class="token-param">"min_size"</span>: <span class="token-number">2</span>,
+            <span class="token-param">"max_size"</span>: <span class="token-number">10</span>,
+            <span class="token-param">"acquire_timeout_seconds"</span>: <span class="token-number">5.0</span>,
+        },
+    },
+)
+<span class="token-comment"># Pool is managed by AraxysShield — use shield.db_pool.acquire()</span></code></pre>
+  </div>
+
+  <h3 id="v090-secrets-tls">Database TLS & Secrets Resolution</h3>
+  <p>
+    <strong>TLS</strong>: <code>build_ssl_context()</code> creates properly configured SSL contexts with minimum TLS version enforcement and CA certificate loading. Supports certificate pinning via SHA-256 fingerprint on Redis pools.
+  </p>
+  <p>
+    <strong>Secrets Chain</strong>: Resolve database connection strings from environment variables, HashiCorp Vault (KV v2), or AWS Secrets Manager — in order, with fail-soft behavior. Teams can use env vars in dev, Vault in staging, and AWS in production without code changes.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys.db_security.secrets <span class="token-keyword">import</span> EnvVarResolver, VaultResolver, ChainedResolver
+
+chain = <span class="token-function">ChainedResolver</span>([
+    <span class="token-function">EnvVarResolver</span>(),                               <span class="token-comment"># ARAXYS_DB__REDIS_URL</span>
+    <span class="token-function">VaultResolver</span>(<span class="token-string">"https://vault:8200"</span>, <span class="token-string">"s.token"</span>),  <span class="token-comment"># Vault KV v2</span>
+])
+redis_url = <span class="token-keyword">await</span> chain.<span class="token-function">resolve</span>(<span class="token-string">"REDIS_URL"</span>)</code></pre>
+  </div>
+
+  <!-- Quick start for v0.9 -->
+  <h2 id="quick-start">Upgrading to v0.9</h2>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">bash</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Upgrade Araxys</span>
+pip install --upgrade araxys
+
+<span class="token-comment"># With all optional dependencies (recommended for v0.9 features)</span>
+pip install araxys[all]</code></pre>
+  </div>
+
+  <p>
+    All v0.9.x features are <strong>opt-in</strong> and fully backward-compatible. Your existing <code>AraxysConfig</code> continues to work unchanged. New modules (MFA, RBAC, OAuth2, Admin API, PostgreSQL pool) only activate when their config sections are populated.
+  </p>
+
+  <p>
+    See the <a href="/configuration">Configuration</a> page for the complete reference of all config classes, or browse individual module pages for deep-dive documentation.
+  </p>
+
+</DocsLayout>
