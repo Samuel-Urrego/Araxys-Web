@@ -1,0 +1,194 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Redis Sentinel & Cluster" activeNav="redis-sentinel-cluster" description="Redis high-availability modes with Sentinel failover and client-side sharded Cluster support.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys v0.10 introduces <strong>Redis high-availability modes</strong> that enable production-grade fault tolerance for all Araxys backends. Two new pool types — <strong>RedisSentinelPool</strong> (failover-aware) and <strong>RedisClusterPool</strong> (sharded) — along with a unified <code>mode</code> routing system ensure rate limiting, sessions, JWT, and other modules continue to function correctly during Redis failures.
+  </p>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      Backend Auto-Detection
+    </div>
+    <div class="alert-content">
+      All Araxys backends (rate limiting, sessions, JWT token storage, DLQ, API keys) <strong>automatically detect</strong> the Redis pool type from your configuration. You configure Redis once in <code>AraxysConfig</code> and every module uses the correct pool.
+    </div>
+  </div>
+
+  <h2 id="sentinel-pool">RedisSentinelPool</h2>
+  <p>
+    <strong>Sentinel mode</strong> provides automatic failover for Redis master-replica setups. When the current master becomes unavailable, Sentinel promotes a replica to master and the pool transparently reconnects:
+  </p>
+  <ul>
+    <li><strong>Health monitoring</strong>: Sentinels continuously monitor the master and replicas</li>
+    <li><strong>Automatic failover</strong>: On master failure, a replica is promoted and all connections are redirected</li>
+    <li><strong>Multi-sentinel quorum</strong>: Configure multiple Sentinels — failover requires a quorum to prevent split-brain</li>
+    <li><strong>Connection resilience</strong>: The pool retries connections during failover transitions rather than throwing errors immediately</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig
+
+<span class="token-comment"># Sentinel mode — automatic failover for HA</span>
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">redis</span>={
+        <span class="token-string">"mode"</span>: <span class="token-string">"sentinel"</span>,
+        <span class="token-string">"sentinels"</span>: [
+            (<span class="token-string">"sentinel-1.example.com"</span>, <span class="token-number">26379</span>),
+            (<span class="token-string">"sentinel-2.example.com"</span>, <span class="token-number">26379</span>),
+            (<span class="token-string">"sentinel-3.example.com"</span>, <span class="token-number">26379</span>),
+        ],
+        <span class="token-string">"master_name"</span>: <span class="token-string">"araxys-master"</span>,
+        <span class="token-string">"sentinel_username"</span>: <span class="token-string">"sentinel-user"</span>,       <span class="token-comment"># Optional</span>
+        <span class="token-string">"sentinel_password"</span>: <span class="token-string">"sentinel-pass"</span>,      <span class="token-comment"># Optional</span>
+        <span class="token-string">"username"</span>: <span class="token-string">"redis-user"</span>,                <span class="token-comment"># Optional — master auth</span>
+        <span class="token-string">"password"</span>: <span class="token-string">"redis-pass"</span>,                <span class="token-comment"># Optional — master auth</span>
+        <span class="token-string">"db"</span>: <span class="token-number">0</span>,
+        <span class="token-string">"max_connections"</span>: <span class="token-number">20</span>,
+    },
+)`} /></pre>
+  </div>
+
+  <h2 id="cluster-pool">RedisClusterPool</h2>
+  <p>
+    <strong>Cluster mode</strong> provides client-side sharding for Redis Cluster deployments. Keys are distributed across hash slots (0–16383) on multiple nodes:
+  </p>
+  <ul>
+    <li><strong>Client-side sharding</strong>: The pool routes each command to the correct node based on the key's hash slot</li>
+    <li><strong>MOVED/ASK redirection</strong>: Handles cluster topology changes transparently — nodes can be added or removed without restarting the application</li>
+    <li><strong>Startup node discovery</strong>: Provide one or more cluster nodes — the pool discovers the full cluster topology on connect</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig
+
+<span class="token-comment"># Cluster mode — client-side sharding</span>
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">redis</span>={
+        <span class="token-string">"mode"</span>: <span class="token-string">"cluster"</span>,
+        <span class="token-string">"startup_nodes"</span>: [
+            (<span class="token-string">"redis-node-1.example.com"</span>, <span class="token-number">6379</span>),
+            (<span class="token-string">"redis-node-2.example.com"</span>, <span class="token-number">6379</span>),
+            (<span class="token-string">"redis-node-3.example.com"</span>, <span class="token-number">6379</span>),
+        ],
+        <span class="token-string">"username"</span>: <span class="token-string">"redis-user"</span>,          <span class="token-comment"># Optional</span>
+        <span class="token-string">"password"</span>: <span class="token-string">"redis-pass"</span>,          <span class="token-comment"># Optional</span>
+        <span class="token-string">"max_connections"</span>: <span class="token-number">20</span>,
+        <span class="token-string">"read_from_replicas"</span>: <span class="token-bool">True</span>,           <span class="token-comment"># Optional</span>
+    },
+)`} /></pre>
+  </div>
+
+  <h2 id="mode-routing">Mode Routing</h2>
+  <p>
+    The <code>mode</code> field is the single control point for all Redis topology routing:
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Mode</th>
+        <th>Pool Type</th>
+        <th>Use Case</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>"standalone"</code></td><td>Standard <code>redis.asyncio.ConnectionPool</code></td><td>Single Redis instance (default)</td></tr>
+      <tr><td><code>"sentinel"</code></td><td><code>RedisSentinelPool</code></td><td>HA with automatic failover</td></tr>
+      <tr><td><code>"cluster"</code></td><td><code>RedisClusterPool</code></td><td>Horizontal scaling via sharding</td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    When <code>redis_url</code> is set but <code>mode</code> is not, Araxys defaults to <code>"standalone"</code> — backward-compatible with all existing configurations.
+  </p>
+
+  <h2 id="standalone-mode">Standalone Mode (Default)</h2>
+  <p>
+    The classic Redis connection — unchanged from previous versions. Set <code>redis_url</code> and Araxys uses a standard connection pool:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Standalone — default mode, no changes needed</span>
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"..."</span>,
+    <span class="token-param">redis_url</span>=<span class="token-string">"redis://localhost:6379"</span>,
+    <span class="token-comment"># mode defaults to "standalone" — no extra config needed</span>
+)</code></pre>
+  </div>
+
+  <h2 id="config-reference">Configuration Reference</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>mode</code></td><td><code>Literal["standalone", "sentinel", "cluster"]</code></td><td><code>"standalone"</code></td><td>Redis topology mode (v0.10)</td></tr>
+      <tr><td><code>sentinels</code></td><td><code>list[tuple[str, int]]</code></td><td><em>required for sentinel</em></td><td>Sentinel (host, port) pairs</td></tr>
+      <tr><td><code>master_name</code></td><td><code>str</code></td><td><em>required for sentinel</em></td><td>Sentinel master group name</td></tr>
+      <tr><td><code>startup_nodes</code></td><td><code>list[tuple[str, int]]</code></td><td><em>required for cluster</em></td><td>Cluster node (host, port) pairs</td></tr>
+      <tr><td><code>max_connections</code></td><td><code>int</code></td><td><code>20</code></td><td>Max connections per pool</td></tr>
+      <tr><td><code>username</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Redis ACL username</td></tr>
+      <tr><td><code>password</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Redis ACL password</td></tr>
+      <tr><td><code>db</code></td><td><code>int</code></td><td><code>0</code></td><td>Redis database number</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="all-backends">Module-Specific Backend Integration</h2>
+  <p>
+    Once Redis is configured with a mode, every Araxys module that uses Redis automatically receives the correct pool:
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Module</th>
+        <th>Redis Usage</th>
+        <th>Pool Type</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Rate Limiting</td><td>Counter storage + IP ban lists</td><td>Auto-detected from mode</td></tr>
+      <tr><td>Sessions</td><td>Session record storage + idle tracking</td><td>Auto-detected from mode</td></tr>
+      <tr><td>JWT Auth</td><td>JTI blacklist + token family storage</td><td>Auto-detected from mode</td></tr>
+      <tr><td>API Keys</td><td>Key hash storage + IP restrictions</td><td>Auto-detected from mode</td></tr>
+      <tr><td>Webhooks</td><td>Dead-Letter Queue storage</td><td>Auto-detected from mode</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--success">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">check_circle</span>
+      Zero Code Changes
+    </div>
+    <div class="alert-content">
+      If you're already using <code>redis_url</code>, upgrading to v0.10 requires <strong>no application code changes</strong>. The standalone mode is the default and behaves identically to previous versions. Sentinel and Cluster modes are opt-in by setting <code>redis.mode</code>.
+    </div>
+  </div>
+
+</DocsLayout>

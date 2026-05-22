@@ -103,9 +103,10 @@ shield = <span class="token-function">AraxysShield</span>(
       <tr><td><code>ban_threshold</code></td><td><code>int</code></td><td><code>5</code></td><td>Violations before temporary ban (≥1)</td></tr>
       <tr><td><code>ban_duration_seconds</code></td><td><code>int</code></td><td><code>300</code></td><td>Initial ban duration in seconds (≥1)</td></tr>
       <tr><td><code>escalation_multiplier</code></td><td><code>float</code></td><td><code>2.0</code></td><td>Ban duration multiplier per violation (≥1.0)</td></tr>
-      <tr><td><code>exclude_paths</code></td><td><code>list[str]</code></td><td><code>["/docs", "/redoc", "/openapi.json", "/healthz"]</code></td><td>Paths excluded from rate limiting</td></tr>
+      <tr><td><code>exclude_paths</code></td><td><code>list[str]</code></td><td><code>["/docs", "/redoc", "/openapi.json", "/healthz"]</code></td><td>Paths excluded from rate limiting (fnmatch glob patterns supported in v0.10)</td></tr>
       <tr><td><code>tracking_mode</code></td><td><code>list[Literal["ip", "user", "api_key", "endpoint"]]</code></td><td><code>["ip"]</code></td><td>Rate limit tracking strategies</td></tr>
       <tr><td><code>per_endpoint_limits</code></td><td><code>dict[str, dict]</code></td><td><code>&#123;&#125;</code></td><td>Endpoint-specific limits (glob patterns)</td></tr>
+      <tr><td><code>max_ban_duration_seconds</code></td><td><code>int | None</code></td><td><code>None</code></td><td>Hard upper bound on ban duration after escalation (v0.10)</td></tr>
     </tbody>
   </table>
 
@@ -248,5 +249,14 @@ config = <span class="token-function">RateLimitConfig</span>(
       Per-user tracking requires JWT auth to be enabled. Per-API-key tracking requires the API Keys module to be enabled.
     </div>
   </div>
+
+  <h2 id="v010-improvements">v0.10 Improvements</h2>
+  <ul>
+    <li><strong><code>max_ban_duration_seconds</code></strong>: New config field caps ban durations — no matter how many violations, bans won't exceed this hard upper bound.</li>
+    <li><strong>fnmatch exclusion</strong>: <code>exclude_paths</code> now supports fnmatch glob patterns (e.g. <code>/api/public/*</code>) instead of exact path matching only.</li>
+    <li><strong>Token hash truncation</strong>: Stored token hashes are truncated to prevent unbounded memory growth in Redis.</li>
+    <li><strong>InMemory violation timestamps</strong>: Violation records now include accurate timestamps in InMemory backend, matching Redis behavior.</li>
+    <li><strong>Atomic expire nx=True</strong>: Key expiration in Redis uses <code>nx=True</code> to prevent race conditions on concurrent expiry operations.</li>
+  </ul>
 
 </DocsLayout>

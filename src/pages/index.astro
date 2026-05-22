@@ -16,11 +16,11 @@ import '../styles/global.css';
     </div>
 
     <p class="body-lg text-text-secondary max-w-2xl mb-4">
-      Enterprise-grade security for your FastAPI applications with <strong class="text-text-primary">zero boilerplate</strong>. Rate limiting, honeypots, JWT, MFA, RBAC, OAuth2, API keys, sanitization, encrypted audit logging — all in <strong class="text-text-primary">three lines of code</strong>.
+      Enterprise-grade security for your FastAPI applications with <strong class="text-text-primary">zero boilerplate</strong>. Rate limiting, honeypots, JWT, MFA, RBAC, OAuth2, WebAuthn, API keys, sanitization, encrypted audit logging — all in <strong class="text-text-primary">three lines of code</strong>.
     </p>
     <a href="/whats-new" class="inline-flex items-center gap-1.5 text-sm text-primary-soft hover:text-primary transition-colors mb-8">
       <span class="material-symbols-outlined text-[16px]">new_releases</span>
-      <span>What's new in v0.9.3 — MFA, RBAC, OAuth2, Admin API, PostgreSQL pool</span>
+      <span>What's new in v0.10 — WebAuthn, Redis Sentinel, DLQ, Session Idle Timeout</span>
       <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
     </a>
 
@@ -72,7 +72,7 @@ shield = <span class="token-function">AraxysShield</span>(app, <span class="toke
   </div>
 
   <h2 id="modules">Security Modules</h2>
-  <p>Araxys ships with 20+ production-ready modules, each independently configurable. <a href="/whats-new" class="text-primary-soft hover:underline">See what's new in v0.9 →</a></p>
+  <p>Araxys ships with 20+ production-ready modules, each independently configurable. <a href="/whats-new" class="text-primary-soft hover:underline">See what's new in v0.10 →</a></p>
 
   <div class="not-prose grid grid-cols-1 sm:grid-cols-2 gap-3 my-6">
     <a href="/rate-limiting" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
@@ -221,13 +221,13 @@ shield = <span class="token-function">AraxysShield</span>(app, <span class="toke
       <p class="text-xs text-text-muted leading-relaxed">Hierarchical roles with resource:action permissions and wildcard support.</p>
     </a>
 
-    <a href="/whats-new#v090-oauth" class="group block p-4 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition-all duration-200">
+    <a href="/webauthn-passkeys" class="group block p-4 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition-all duration-200">
       <div class="flex items-center gap-3 mb-2">
-        <span class="material-symbols-outlined text-primary-soft">login</span>
-        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">OAuth2 / OIDC</span>
+        <span class="material-symbols-outlined text-primary-soft">passkey</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">WebAuthn / Passkeys</span>
         <span class="text-[9px] bg-primary/15 text-primary-soft px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">NEW</span>
       </div>
-      <p class="text-xs text-text-muted leading-relaxed">PKCE-enforced flow with pre-configured Google, GitHub, and Microsoft providers.</p>
+      <p class="text-xs text-text-muted leading-relaxed">FIDO2 passwordless auth with biometric passkeys, COSE key parsing, and attestation.</p>
     </a>
   </div>
 
@@ -287,6 +287,8 @@ shield = <span class="token-function">AraxysShield</span>(
         <span class="token-param">audit</span>={"encrypt": <span class="token-bool">True</span>, "log_file": <span class="token-string">"audit.log"</span>},
         <span class="token-param">cors</span>={"allowed_origins": [<span class="token-string">"https://app.example.com"</span>]},
         <span class="token-param">brute_force</span>={"max_attempts": <span class="token-number">5</span>, "lockout_duration": <span class="token-number">900</span>},
+        <span class="token-param">webauthn</span>=<span class="token-bool">True</span>,
+        <span class="token-param">session</span>={"idle_timeout_seconds": <span class="token-number">1800</span>},
         <span class="token-param">prometheus</span>=<span class="token-bool">True</span>,
         <span class="token-comment"># See Configuration page for all available options</span>
     ),
@@ -327,9 +329,6 @@ shield = <span class="token-function">AraxysShield</span>(
 │   └── middleware.py   <span class="token-comment"># CIDR matching + allow/block/hybrid</span>
 ├── telemetry/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">timeline</span> OpenTelemetry tracing</span>
 │   └── middleware.py   <span class="token-comment"># Span-per-middleware + no-op fallback</span>
-├── webhooks/            <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">webhook</span> Security webhooks</span>
-│   ├── bus.py          <span class="token-comment"># Unified event bus</span>
-│   └── delivery.py     <span class="token-comment"># HTTP delivery + retry</span>
 ├── prometheus/          <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">monitoring</span> Prometheus metrics</span>
 │   ├── metrics.py      <span class="token-comment"># 9 counters + histogram</span>
 │   └── middleware.py   <span class="token-comment"># /metrics endpoint</span>
@@ -352,6 +351,16 @@ shield = <span class="token-function">AraxysShield</span>(
 │   ├── encryption.py   <span class="token-comment"># AES-256-GCM + PBKDF2</span>
 │   ├── logger.py       <span class="token-comment"># Structured logger</span>
 │   └── events.py       <span class="token-comment"># Event types</span>
+├── webauthn/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">passkey</span> WebAuthn / Passkeys</span>
+│   ├── ceremony.py     <span class="token-comment"># Registration + authentication flows</span>
+│   └── cose.py         <span class="token-comment"># COSE key parsing (ES256, RS256, EdDSA)</span>
+├── webhooks/            <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">webhook</span> Security webhooks</span>
+│   ├── bus.py          <span class="token-comment"># Unified event bus</span>
+│   ├── delivery.py     <span class="token-comment"># HTTP delivery + retry</span>
+│   └── dlq.py          <span class="token-comment"># Dead-letter queue + retry consumer</span>
+├── redis_pool/          <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">dns</span> Redis HA pools</span>
+│   ├── sentinel.py     <span class="token-comment"># Sentinel failover pool</span>
+│   └── cluster.py      <span class="token-comment"># Client-side sharded cluster pool</span>
 └── shield.py           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">bolt</span> Main orchestrator</span></code></pre>
   </div>
 

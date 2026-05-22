@@ -136,6 +136,9 @@ import '../styles/global.css';
     <li><strong>No Redis URL</strong> → <code>InMemoryTokenStorage</code> (development)</li>
     <li><strong>Redis URL set</strong> → <code>RedisTokenStorage</code> (production)</li>
   </ul>
+  <p>
+    When using Redis, JTI operations use <strong>atomic <code>SET NX</code></strong> to prevent race conditions — if two workers attempt to blacklist the same JTI concurrently, only one succeeds, and the other detects the conflict.
+  </p>
 
   <div class="alert alert--warning">
     <div class="alert-title">
@@ -152,7 +155,7 @@ import '../styles/global.css';
     Araxys supports <strong>RS256</strong> (RSA PKCS#1 v1.5 with SHA-256) and <strong>ES256</strong> (ECDSA P-256 with SHA-256) asymmetric signing algorithms in addition to the default <strong>HS256</strong> (HMAC with SHA-256). When using RS256 or ES256, you must provide a <code>private_key</code> and <code>public_key</code> in PEM format.
   </p>
   <p>
-    HS256 (symmetric) uses only the <code>secret_key</code> for both signing and verification. RS256/ES256 use a private key for signing and a public key for verification — the public key can be safely distributed to clients or third-party services.
+    HS256 (symmetric) uses only the <code>secret_key</code> for both signing and verification. RS256/ES256 use a private key for signing and a public key for verification — the public key can be safely distributed to clients or third-party services. When using asymmetric algorithms without providing the required keys, Araxys raises a <strong><code>ConfigurationError</code></strong> at startup rather than failing silently at runtime (v0.10).
   </p>
 
   <div class="code-block">

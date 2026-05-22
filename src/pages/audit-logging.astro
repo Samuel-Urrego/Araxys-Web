@@ -167,7 +167,7 @@ config = <span class="token-function">AraxysConfig</span>(
 
   <h2 id="pii-masking">PII Masking</h2>
   <p>
-    Protect sensitive user data with <strong>recursive PII field masking</strong>. Configure <code>pii_fields</code> with dot-notation paths like <code>"user.email"</code> or <code>"request.phone"</code>. Araxys traverses the <code>AuditEntry.metadata</code> dict recursively and replaces matching field values with <code>***</code>.
+    Protect sensitive user data with <strong>recursive PII field masking</strong>. Configure <code>pii_fields</code> with dot-notation paths like <code>"user.email"</code> or <code>"request.phone"</code>. Araxys traverses the <code>AuditEntry.metadata</code> dict recursively and replaces matching field values with <code>***</code>. Masking is applied <strong>before</strong> structlog serialization (v0.10 fix — previously masking ran after, which could leak PII into structured log output).
   </p>
 
   <div class="code-block">

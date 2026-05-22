@@ -41,8 +41,7 @@ import '../styles/global.css';
     If a match is found, the password is rejected with a <em>"Password has been compromised"</em> error.
   </p>
   <p>
-    The integration is <strong>best-effort</strong> — if the HIBP API is unreachable, password validation proceeds
-    without the breach check. This prevents HIBP downtime from blocking legitimate user registrations or password changes.
+    The integration uses the <strong>k-anonymity API</strong> — only the first 5 characters of the SHA-1 hash are sent over the network. With <code>hibp_fail_closed=True</code> (v0.10 default), Araxys properly rejects passwords when the HIBP API is unreachable rather than silently allowing them. This prevents attackers from DDoSing the HIBP API to bypass breach detection.
   </p>
 
   <h2 id="configuration">Configuration</h2>
@@ -99,10 +98,10 @@ shield = <span class="token-function">AraxysShield</span>(
   <div class="alert alert--warning">
     <div class="alert-title">
       <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
-      HIBP Fail-Open
+      HIBP Fail-Closed (v0.10)
     </div>
     <div class="alert-content">
-      If the HIBP API is unreachable, password validation proceeds <strong>without</strong> the breach check. This prevents HIBP downtime from blocking legitimate logins or registrations. A warning is logged when the API call fails.
+      When <code>hibp_fail_closed=True</code> (the default since v0.10), password validation <strong>raises an exception</strong> if the HIBP API is unreachable. This is a security hardening measure — it prevents attackers from DDoSing the HIBP API to bypass breach detection. If you need the old best-effort behavior, set <code>hibp_fail_closed=False</code>.
     </div>
   </div>
 

@@ -1,0 +1,208 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="WebAuthn / Passkeys" activeNav="webauthn-passkeys" description="FIDO2 passwordless authentication with biometric passkeys, COSE key parsing, and attestation verification.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys v0.10 introduces <strong>FIDO2 WebAuthn</strong> support — passwordless authentication using biometric passkeys, security keys, and platform authenticators. The implementation covers the full <strong>registration</strong> and <strong>authentication</strong> ceremonies with <strong>zero external dependencies</strong> for cryptographic operations.
+  </p>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      Dependency Coverage
+    </div>
+    <div class="alert-content">
+      WebAuthn is implemented with <strong>100% dependency coverage</strong> — all cryptographic operations (COSE key parsing, attestation verification, CBOR parsing) use the Python standard library. No additional packages required.
+    </div>
+  </div>
+
+  <h2 id="registration-flow">Registration Flow</h2>
+  <p>
+    The registration ceremony establishes a new credential for a user. The flow follows the FIDO2 spec:
+  </p>
+  <ol>
+    <li><strong>Server generates a challenge</strong> — random bytes stored server-side with a TTL</li>
+    <li><strong>Client creates a credential</strong> — browser calls <code>navigator.credentials.create()</code></li>
+    <li><strong>Server verifies the attestation</strong> — validates the credential public key, attestation statement, and challenge</li>
+  </ol>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys.webauthn <span class="token-keyword">import</span> WebAuthnManager
+<span class="token-keyword">from</span> araxys.webauthn.challenge_store <span class="token-keyword">import</span> ChallengeStore
+
+manager = <span class="token-function">WebAuthnManager</span>(config)
+store = <span class="token-function">ChallengeStore</span>(<span class="token-param">ttl_seconds</span>=<span class="token-number">300</span>)
+
+<span class="token-decorator">@app.post</span>(<span class="token-string">"/webauthn/register/begin"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">begin_registration</span>(<span class="token-param">user_id</span>: <span class="token-builtin">str</span>):
+    options = <span class="token-keyword">await</span> manager.<span class="token-function">registration_options</span>(user_id)
+    <span class="token-keyword">await</span> store.<span class="token-function">store</span>(user_id, options.challenge)
+    <span class="token-keyword">return</span> options
+
+<span class="token-decorator">@app.post</span>(<span class="token-string">"/webauthn/register/complete"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">complete_registration</span>(<span class="token-param">user_id</span>: <span class="token-builtin">str</span>, <span class="token-param">response</span>: <span class="token-builtin">dict</span>):
+    challenge = <span class="token-keyword">await</span> store.<span class="token-function">retrieve</span>(user_id)
+    credential = <span class="token-keyword">await</span> manager.<span class="token-function">verify_registration</span>(response, challenge)
+    <span class="token-comment"># Store credential.public_key, credential.credential_id for future auth</span>
+    <span class="token-keyword">return</span> {<span class="token-string">"status"</span>: <span class="token-string">"registered"</span>}`} /></pre>
+  </div>
+
+  <h2 id="authentication-flow">Authentication Flow</h2>
+  <p>
+    The authentication ceremony verifies a previously registered credential:
+  </p>
+  <ol>
+    <li><strong>Server generates an assertion challenge</strong></li>
+    <li><strong>Client signs the challenge</strong> — browser calls <code>navigator.credentials.get()</code></li>
+    <li><strong>Server verifies the assertion</strong> — validates signature, challenge, and sign count</li>
+  </ol>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-decorator">@app.post</span>(<span class="token-string">"/webauthn/auth/begin"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">begin_authentication</span>(<span class="token-param">user_id</span>: <span class="token-builtin">str</span>):
+    options = <span class="token-keyword">await</span> manager.<span class="token-function">authentication_options</span>(user_id)
+    <span class="token-keyword">await</span> store.<span class="token-function">store</span>(user_id, options.challenge)
+    <span class="token-keyword">return</span> options
+
+<span class="token-decorator">@app.post</span>(<span class="token-string">"/webauthn/auth/complete"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">complete_authentication</span>(<span class="token-param">user_id</span>: <span class="token-builtin">str</span>, <span class="token-param">response</span>: <span class="token-builtin">dict</span>):
+    challenge = <span class="token-keyword">await</span> store.<span class="token-function">retrieve</span>(user_id)
+    result = <span class="token-keyword">await</span> manager.<span class="token-function">verify_authentication</span>(
+        response, challenge, <span class="token-param">stored_credential</span>=credential
+    )
+    <span class="token-keyword">return</span> {<span class="token-string">"status"</span>: <span class="token-string">"authenticated"</span>, <span class="token-string">"sign_count"</span>: result.sign_count}`} /></pre>
+  </div>
+
+  <h2 id="cose-key-parsing">COSE Key Parsing</h2>
+  <p>
+    Araxys parses <strong>CBOR-encoded COSE keys</strong> from authenticator attestation responses. Three key types are supported with no external dependencies:
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Algorithm</th>
+        <th>COSE ID</th>
+        <th>Key Type</th>
+        <th>Use Case</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>ES256</code></td><td>-7</td><td>ECDSA P-256 w/ SHA-256</td><td>Most common — all modern authenticators</td></tr>
+      <tr><td><code>RS256</code></td><td>-257</td><td>RSA PKCS#1 v1.5 w/ SHA-256</td><td>Legacy security keys, enterprise tokens</td></tr>
+      <tr><td><code>EdDSA</code></td><td>-8</td><td>Ed25519</td><td>High-performance modern authenticators</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--warning">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+      CBOR Parsing Guards
+    </div>
+    <div class="alert-content">
+      All CBOR input is validated for size limits and structural integrity before parsing. Malformed or oversized CBOR payloads are rejected cleanly — no buffer overflows, no resource exhaustion.
+    </div>
+  </div>
+
+  <h2 id="attestation">Attestation Types</h2>
+  <p>
+    Araxys supports three attestation conveyance types:
+  </p>
+  <ul>
+    <li><strong><code>none</code></strong>: No attestation — the simplest option. The client provides no proof of the authenticator's provenance. Trust is established through the registration ceremony itself.</li>
+    <li><strong><code>indirect</code></strong>: The authenticator's attestation is replaced by an anonymization CA. Provides some assurance without revealing the authenticator model.</li>
+    <li><strong><code>direct</code></strong>: Full attestation from the manufacturer. Verifies the authenticator's make and model against a trusted root CA list. Suitable for high-security environments.</li>
+  </ul>
+
+  <h2 id="challenge-store">ChallengeStore</h2>
+  <p>
+    The <code>ChallengeStore</code> manages server-side challenge storage with <strong>TTL semantics</strong>:
+  </p>
+  <ul>
+    <li><strong><code>store(user_id, challenge)</code></strong>: Saves a challenge with automatic expiration</li>
+    <li><strong><code>retrieve(user_id)</code></strong>: <code>await</code>-based retrieval — fetches and deletes in one atomic operation to prevent replay</li>
+    <li><strong>Configurable <code>ttl_seconds</code></strong>: Challenges expire automatically — default 5 minutes to match WebAuthn spec recommendations</li>
+  </ul>
+
+  <h2 id="sign-count">Sign Count Tracking</h2>
+  <p>
+    Every authenticator maintains a <strong>monotonic signature counter</strong>. Araxys verifies that the counter strictly increases with each authentication — if a counter is reused, it indicates a possible <strong>cloned authenticator</strong>. The new count is persisted after successful verification.
+  </p>
+
+  <h2 id="configuration">Configuration</h2>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> WebAuthnConfig
+
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">webauthn</span>=<span class="token-function">WebAuthnConfig</span>(
+        <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+        <span class="token-param">rp_name</span>=<span class="token-string">"My Application"</span>,
+        <span class="token-param">rp_id</span>=<span class="token-string">"app.example.com"</span>,
+        <span class="token-param">origin</span>=<span class="token-string">"https://app.example.com"</span>,
+        <span class="token-param">challenge_ttl</span>=<span class="token-number">300</span>,
+        <span class="token-param">attestation</span>=<span class="token-string">"none"</span>,
+    ),
+)</code></pre>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>False</code></td><td>Enable WebAuthn</td></tr>
+      <tr><td><code>rp_name</code></td><td><code>str</code></td><td><em>required</em></td><td>Relying Party display name</td></tr>
+      <tr><td><code>rp_id</code></td><td><code>str</code></td><td><em>required</em></td><td>Relying Party ID (domain)</td></tr>
+      <tr><td><code>origin</code></td><td><code>str</code></td><td><em>required</em></td><td>Expected origin (e.g. https://...)</td></tr>
+      <tr><td><code>challenge_ttl</code></td><td><code>int</code></td><td><code>300</code></td><td>Challenge TTL in seconds</td></tr>
+      <tr><td><code>attestation</code></td><td><code>Literal["none", "indirect", "direct"]</code></td><td><code>"none"</code></td><td>Attestation conveyance type</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="fastapi-dependency">FastAPI Dependency</h2>
+  <p>
+    Protect any endpoint with WebAuthn authentication using the built-in FastAPI dependency:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> Depends
+<span class="token-keyword">from</span> araxys.webauthn.dependencies <span class="token-keyword">import</span> require_webauthn
+
+<span class="token-decorator">@app.get</span>(<span class="token-string">"/secure/data"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">secure_endpoint</span>(
+    <span class="token-param">user_id</span>: <span class="token-builtin">str</span> = <span class="token-function">Depends</span>(
+        <span class="token-function">require_webauthn</span>(<span class="token-param">manager</span>=shield.webauthn_manager)
+    ),
+):
+    <span class="token-keyword">return</span> {<span class="token-string">"data"</span>: <span class="token-string">"sensitive"</span>, <span class="token-string">"user"</span>: user_id}`} /></pre>
+  </div>
+
+</DocsLayout>

@@ -3,13 +3,14 @@ import DocsLayout from '../layouts/DocsLayout.astro';
 import '../styles/global.css';
 ---
 
-<DocsLayout title="Session Management" activeNav="session-management" description="Max concurrent session enforcement, revocation, and background cleanup.">
+<DocsLayout title="Session Management" activeNav="session-management" description="Max concurrent session enforcement, idle timeout, revocation, and background cleanup.">
 
   <h2 id="overview">Overview</h2>
   <p>
-    Araxys provides server-side session management with three key capabilities: <strong>concurrent session enforcement</strong>
-    (revoke the oldest session when a limit is exceeded), <strong>manual session revocation</strong> for immediate
-    invalidation, and a <strong>background cleanup loop</strong> that periodically purges expired sessions. Sessions
+    Araxys provides server-side session management with four key capabilities: <strong>concurrent session enforcement</strong>
+    (revoke the oldest session when a limit is exceeded), <strong>idle timeout</strong> (expire sessions after inactivity),
+    <strong>manual session revocation</strong> for immediate
+    invalidation, and a <strong>background cleanup loop</strong> that periodically purges expired and idle sessions. Sessions
     work alongside JWT authentication and CSRF protection for a complete auth pipeline.
   </p>
 
@@ -40,9 +41,27 @@ import '../styles/global.css';
   <h3 id="cleanup-loop">Background Cleanup Loop</h3>
   <p>
     A background <code>asyncio</code> task runs every <code>cleanup_interval</code> seconds and purges sessions that
-    have exceeded their <code>session_ttl</code>. This prevents the session store from accumulating stale entries.
+    have exceeded their <code>session_ttl</code> or their <code>idle_timeout_seconds</code>. This prevents the session store from accumulating stale entries.
     The loop can be gracefully terminated by calling <code>shield.shutdown()</code> during application shutdown.
   </p>
+
+  <h3 id="idle-timeout">Idle Timeout (v0.10)</h3>
+  <p>
+    Sessions now track <strong>last activity</strong> via the <code>last_activity_at</code> timestamp on <code>SessionRecord</code>. When <code>idle_timeout_seconds</code> is configured, any session that has been idle longer than this value is automatically expired by the background cleanup loop — independent of the absolute <code>session_ttl</code>. Use <code>touch_session()</code> to refresh the idle timer on each authenticated request.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-comment"># Touch session on each authenticated request</span>
+<span class="token-decorator">@app.get</span>(<span class="token-string">"/dashboard"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">dashboard</span>(<span class="token-param">session_id</span>: <span class="token-builtin">str</span>):
+    <span class="token-keyword">await</span> shield.session_manager.<span class="token-function">touch_session</span>(session_id)
+    <span class="token-keyword">return</span> {<span class="token-string">"status"</span>: <span class="token-string">"ok"</span>}
+<span class="token-comment"># Session auto-expires if idle for longer than idle_timeout_seconds</span>`} /></pre>
+  </div>
 
   <h2 id="configuration">Configuration</h2>
   <p>Configure session management via the <code>SessionConfig</code> model:</p>
@@ -63,6 +82,7 @@ shield = <span class="token-function">AraxysShield</span>(
             <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
             <span class="token-param">max_concurrent</span>=<span class="token-number">3</span>,
             <span class="token-param">session_ttl</span>=<span class="token-number">86400</span>,
+            <span class="token-param">idle_timeout_seconds</span>=<span class="token-number">1800</span>,
             <span class="token-param">cleanup_interval</span>=<span class="token-number">300</span>,
         ),
     ),
@@ -84,6 +104,7 @@ shield = <span class="token-function">AraxysShield</span>(
       <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable session management</td></tr>
       <tr><td><code>max_concurrent</code></td><td><code>int</code></td><td><code>5</code></td><td>Max concurrent sessions per user</td></tr>
       <tr><td><code>session_ttl</code></td><td><code>int</code></td><td><code>86400</code></td><td>Session TTL in seconds (24h)</td></tr>
+      <tr><td><code>idle_timeout_seconds</code></td><td><code>int | None</code></td><td><code>None</code></td><td>Idle timeout in seconds (v0.10) — None = disabled</td></tr>
       <tr><td><code>cleanup_interval</code></td><td><code>int</code></td><td><code>300</code></td><td>Cleanup interval in seconds</td></tr>
     </tbody>
   </table>

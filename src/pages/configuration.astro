@@ -50,9 +50,11 @@ import '../styles/global.css';
       <tr><td><code>ip_access</code></td><td><code>IPAccessConfig | None</code></td><td><code>None</code></td><td>—</td><td>IP access control configuration</td></tr>
       <tr><td><code>csrf</code></td><td><code>CSRFConfig | None</code></td><td><code>None</code></td><td>—</td><td>CSRF protection configuration</td></tr>
       <tr><td><code>brute_force</code></td><td><code>BruteForceConfig | None</code></td><td><code>None</code></td><td>—</td><td>Brute force + password policy</td></tr>
-      <tr><td><code>session</code></td><td><code>SessionConfig | None</code></td><td><code>None</code></td><td>—</td><td>Session management configuration</td></tr>
+      <tr><td><code>session</code></td><td><code>SessionConfig | None</code></td><td><code>None</code></td><td>—</td><td>Session management (max_concurrent, session_ttl, idle_timeout_seconds)</td></tr>
       <tr><td><code>otel</code></td><td><code>OTelConfig | None</code></td><td><code>None</code></td><td>—</td><td>OpenTelemetry configuration</td></tr>
       <tr><td><code>webhooks</code></td><td><code>WebhookConfig | None</code></td><td><code>None</code></td><td>—</td><td>Security webhooks configuration</td></tr>
+      <tr><td><code>webauthn</code></td><td><code>WebAuthnConfig | None</code></td><td><code>None</code></td><td>—</td><td>WebAuthn / Passkeys configuration (v0.10)</td></tr>
+      <tr><td><code>redis</code></td><td><code>dict | None</code></td><td><code>None</code></td><td>—</td><td>Redis HA mode: sentinel/cluster config (v0.10)</td></tr>
       <tr><td><code>prometheus</code></td><td><code>PrometheusConfig | None</code></td><td><code>None</code></td><td>—</td><td>Prometheus metrics configuration</td></tr>
     </tbody>
   </table>
@@ -78,11 +80,12 @@ config = <span class="token-function">AraxysConfig</span>(
     <span class="token-param">secret_key</span>=<span class="token-string">"generate-with-openssl-rand-hex-32!"</span>,
     <span class="token-param">redis_url</span>=<span class="token-string">"redis://localhost:6379"</span>,
 
-    <span class="token-param">rate_limit</span>=<span class="token-function">RateLimitConfig</span>(
+        <span class="token-param">rate_limit</span>=<span class="token-function">RateLimitConfig</span>(
         <span class="token-param">max_requests</span>=<span class="token-number">200</span>,
         <span class="token-param">window_seconds</span>=<span class="token-number">120</span>,
         <span class="token-param">ban_threshold</span>=<span class="token-number">10</span>,
         <span class="token-param">ban_duration_seconds</span>=<span class="token-number">600</span>,
+        <span class="token-param">max_ban_duration_seconds</span>=<span class="token-number">7200</span>,
         <span class="token-param">escalation_multiplier</span>=<span class="token-number">3.0</span>,
     ),
 
@@ -110,9 +113,37 @@ config = <span class="token-function">AraxysConfig</span>(
         <span class="token-param">encrypt</span>=<span class="token-bool">True</span>,
         <span class="token-param">log_file</span>=<span class="token-string">"/var/log/araxys/audit.log"</span>,
     ),
+)</code></pre>
+  </div>
+
+  <h2 id="redis-ha">Redis High Availability (v0.10)</h2>
+  <p>
+    Araxys v0.10 introduces <strong>Redis Sentinel and Cluster</strong> support. All Araxys backends (rate limiting, sessions, JWT, DLQ) auto-detect the pool based on the <code>mode</code> field:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-comment"># Sentinel mode — automatic failover</span>
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"..."</span>,
+    <span class="token-param">redis</span>={
+        <span class="token-string">"mode"</span>: <span class="token-string">"sentinel"</span>,
+        <span class="token-string">"sentinels"</span>: [(<span class="token-string">"sentinel1"</span>, <span class="token-number">26379</span>), (<span class="token-string">"sentinel2"</span>, <span class="token-number">26379</span>)],
+        <span class="token-string">"master_name"</span>: <span class="token-string">"araxys-master"</span>,
+    },
 )
 
-shield = <span class="token-function">AraxysShield</span>(app, config)</code></pre>
+<span class="token-comment"># Cluster mode — client-side sharding</span>
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"..."</span>,
+    <span class="token-param">redis</span>={
+        <span class="token-string">"mode"</span>: <span class="token-string">"cluster"</span>,
+        <span class="token-string">"startup_nodes"</span>: [(<span class="token-string">"node1"</span>, <span class="token-number">6379</span>), (<span class="token-string">"node2"</span>, <span class="token-number">6379</span>)],
+    },
+)`} /></pre>
   </div>
 
   <h2 id="secure-headers-config">Secure Headers Configuration</h2>
@@ -176,6 +207,8 @@ shield = <span class="token-function">AraxysShield</span>(app, config)</code></p
       <tr><td><code>OTelConfig</code></td><td>OpenTelemetry</td><td><code>service_name</code>, <code>exporter_endpoint</code></td></tr>
       <tr><td><code>WebhookConfig</code></td><td>Webhooks</td><td><code>webhook_url</code>, <code>events</code></td></tr>
       <tr><td><code>PrometheusConfig</code></td><td>Metrics</td><td><code>metrics_path</code></td></tr>
+      <tr><td><code>WebAuthnConfig</code></td><td>WebAuthn (v0.10)</td><td><code>rp_name</code>, <code>rp_id</code>, <code>origin</code></td></tr>
+      <tr><td><code>WebhookDLQConfig</code></td><td>Webhook DLQ (v0.10)</td><td><code>dlq_enabled</code>, <code>dlq_ttl_seconds</code></td></tr>
     </tbody>
   </table>
 

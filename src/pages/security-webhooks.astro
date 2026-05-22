@@ -40,7 +40,7 @@ import '../styles/global.css';
 
   <h3 id="hmac-signing">HMAC Signing</h3>
   <p>
-    Every webhook payload is <strong>HMAC-SHA256 signed</strong> using the Araxys <code>secret_key</code>. The signature is sent in the <code>X-Araxys-Signature</code> header, allowing the receiver to verify the webhook's authenticity.
+    Every webhook payload is <strong>HMAC-SHA256 signed</strong> using a key derived via <strong>HKDF-SHA256</strong> from the Araxys <code>secret_key</code>. HKDF derivation with module-specific <code>info</code> prevents cross-module key reuse. The signature is sent in the <code>X-Araxys-Signature</code> header, allowing the receiver to verify the webhook's authenticity.
   </p>
 
   <h2 id="configuration">Configuration</h2>
@@ -81,6 +81,10 @@ shield = <span class="token-function">AraxysShield</span>(
       <tr><td><code>webhook_url</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Default webhook URL for all events</td></tr>
       <tr><td><code>events</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>Event types to deliver (empty = none)</td></tr>
       <tr><td><code>retry_policy</code></td><td><code>dict</code></td><td><code>&#123;"max_retries": 3, "backoff": [1, 2, 4]&#125;</code></td><td>Retry configuration</td></tr>
+      <tr><td><code>dlq_enabled</code></td><td><code>bool</code></td><td><code>False</code></td><td>Enable Redis-backed dead-letter queue (v0.10)</td></tr>
+      <tr><td><code>dlq_ttl_seconds</code></td><td><code>int</code></td><td><code>604800</code></td><td>DLQ auto-purge TTL in seconds (7 days)</td></tr>
+      <tr><td><code>dlq_max_retries</code></td><td><code>int</code></td><td><code>5</code></td><td>Max DLQ retry attempts (v0.10)</td></tr>
+      <tr><td><code>delivery_concurrency</code></td><td><code>int</code></td><td><code>10</code></td><td>Max concurrent deliveries — semaphore cap (v0.10)</td></tr>
     </tbody>
   </table>
 
@@ -163,5 +167,32 @@ config = <span class="token-function">WebhookConfig</span>(
     ).<span class="token-function">hexdigest</span>()
     <span class="token-keyword">return</span> hmac.<span class="token-function">compare_digest</span>(signature, expected)`} /></pre>
   </div>
+
+  <h3 id="dead-letter-queue">Dead-Letter Queue (v0.10)</h3>
+  <p>
+    Failed webhook deliveries are no longer silently discarded. The new <strong>Redis-backed Dead-Letter Queue (DLQ)</strong> ensures delivery durability:
+  </p>
+  <ul>
+    <li><strong>Retry consumer</strong>: Background worker polls the DLQ and retries with exponential backoff</li>
+    <li><strong>Admin API</strong>: <code>GET /admin/dlq/stats</code>, <code>POST /admin/dlq/retry</code>, <code>DELETE /admin/dlq/purge</code> provide full operational control</li>
+    <li><strong>Auto-purge TTL</strong>: Messages older than <code>dlq_ttl_seconds</code> (default: 7 days) are automatically expired from Redis</li>
+    <li><strong>Delivery semaphore cap</strong>: <code>delivery_concurrency</code> limits concurrent outbound HTTP calls to prevent resource exhaustion</li>
+  </ul>
+
+  <h3 id="hkdf-signing">HKDF-Derived Signing Key (v0.10)</h3>
+  <p>
+    Webhook HMAC keys are now derived via <strong>HKDF-SHA256</strong> from the master <code>secret_key</code> with module-specific <code>info</code> parameters. This prevents <strong>cross-module secret reuse</strong> — even if an attacker compromises the webhook signing key, they cannot derive keys for JWT, audit encryption, or any other module.
+  </p>
+
+  <h3 id="ssrf-protection">SSRF Protection (v0.10)</h3>
+  <p>
+    Webhook delivery now includes comprehensive <strong>Server-Side Request Forgery (SSRF)</strong> protection:
+  </p>
+  <ul>
+    <li><strong>16 private IP ranges blocked</strong>: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8, 169.254.0.0/16, and all IPv4-mapped IPv6 equivalents</li>
+    <li><strong><code>getaddrinfo</code> resolution</strong>: DNS resolved to all addresses before checking, catching DNS rebinding attacks</li>
+    <li><strong>Async DNS</strong>: Non-blocking resolution via <code>asyncio</code></li>
+    <li><strong><code>follow_redirects=False</code></strong>: No automatic redirect following — prevents redirect-based SSRF bypass</li>
+  </ul>
 
 </DocsLayout>

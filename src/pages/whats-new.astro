@@ -3,31 +3,218 @@ import DocsLayout from '../layouts/DocsLayout.astro';
 import '../styles/global.css';
 ---
 
-<DocsLayout title="What's New" activeNav="whats-new" description="What's new in Araxys v0.9 — MFA, RBAC, OAuth2/OIDC, Admin API, PostgreSQL pool, and more.">
+<DocsLayout title="What's New" activeNav="whats-new" description="What's new in Araxys v0.10 — WebAuthn, Redis Sentinel & Cluster, Webhook DLQ, Session Idle Timeout, and 47 security fixes.">
 
-  <h2 id="overview">Araxys v0.9 — The Enterprise Release</h2>
+  <h2 id="overview">Araxys v0.10 — The Security Hardening Release</h2>
   <p>
-    Version <strong>0.9.x</strong> is the biggest release since Araxys launched. Four new modules (<strong>MFA, RBAC, OAuth2/OIDC, Admin API</strong>), a production-grade <strong>PostgreSQL connection pool</strong>, and hardening across every existing module — token families, progressive brute force delays, CSP nonces, API key IP restrictions, and more.
+    Version <strong>0.10.0</strong> delivers four new security modules (<strong>WebAuthn / Passkeys, Redis Sentinel & Cluster, Webhook Dead-Letter Queue, Session Idle Timeout</strong>) and <strong>47 security fixes</strong> across every existing module. Every component was hardened — sanitization, sessions, rate limiting, brute force, JWT, crypto, audit, and webhooks. This release pushes Araxys test coverage to <strong>1,018 tests</strong>, maintains <strong>mypy strict</strong> on 138 files, and ships <strong>ruff clean</strong>.
   </p>
 
-  <div class="not-prose grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 my-6">
+  <div class="not-prose grid grid-cols-1 sm:grid-cols-2 gap-3 my-6">
     <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
-      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.0</span>
-      <p class="text-xs text-text-secondary mt-1 leading-relaxed">MFA, RBAC, OAuth2/OIDC, PostgreSQL pool</p>
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.10.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">WebAuthn, Redis Sentinel & Cluster, Webhook DLQ, Session Idle Timeout, 47 security fixes</p>
     </div>
     <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
-      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.1</span>
-      <p class="text-xs text-text-secondary mt-1 leading-relaxed">CSP nonce, HIBP fail-closed, IP restrictions, token family</p>
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.10.1</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">PyPI README sync — patch release, no code changes</p>
+    </div>
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.3</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">JWT nbf claim, brute force progressive delays</p>
     </div>
     <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
       <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.2</span>
       <p class="text-xs text-text-secondary mt-1 leading-relaxed">Admin API, password history, token family verification</p>
     </div>
     <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
-      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.3</span>
-      <p class="text-xs text-text-secondary mt-1 leading-relaxed">JWT nbf claim, brute force progressive delays</p>
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.1</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">CSP nonce, HIBP fail-closed, IP restrictions, token family</p>
+    </div>
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">MFA, RBAC, OAuth2/OIDC, PostgreSQL pool</p>
     </div>
   </div>
+
+  <!-- v0.10.1 -->
+  <h2 id="v0101">v0.10.1 — PyPI README Sync</h2>
+  <p>
+    A <strong>patch release</strong> that updates the PyPI README rendering. <strong>No code changes</strong> — the library is identical to v0.10.0. If you're already on v0.10.0, there is no functional reason to upgrade. The version bump exists solely to trigger a new PyPI package build with the corrected README.
+  </p>
+
+  <!-- v0.10.0 -->
+  <h2 id="v0100">v0.10.0 — WebAuthn, Redis HA, DLQ & 47 Fixes</h2>
+
+  <h3 id="v0100-webauthn">WebAuthn / Passkeys</h3>
+  <p>
+    Araxys now supports <strong>FIDO2 WebAuthn</strong> passwordless authentication with biometric passkeys. Full registration and authentication ceremonies are included:
+  </p>
+  <ul>
+    <li><strong>COSE key parsing</strong>: ES256 (ECDSA P-256), RS256 (RSA), and EdDSA (Ed25519) — zero external dependencies</li>
+    <li><strong>Attestation verification</strong>: <code>none</code>, <code>indirect</code>, and <code>direct</code> attestation types supported</li>
+    <li><strong>ChallengeStore</strong>: Server-side challenge storage with configurable TTL and <code>await</code> semantics — prevents replay</li>
+    <li><strong>Sign count tracking</strong>: Monotonic counter verification to detect cloned authenticators</li>
+    <li><strong>100% dependency coverage</strong>: CBOR parsing guards against oversized payloads and malformed input</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> WebAuthnConfig
+
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">webauthn</span>=<span class="token-function">WebAuthnConfig</span>(
+        <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+        <span class="token-param">rp_name</span>=<span class="token-string">"My App"</span>,
+        <span class="token-param">rp_id</span>=<span class="token-string">"example.com"</span>,
+        <span class="token-param">origin</span>=<span class="token-string">"https://example.com"</span>,
+        <span class="token-param">challenge_ttl</span>=<span class="token-number">300</span>,
+    ),
+)`} /></pre>
+  </div>
+
+  <h3 id="v0100-redis">Redis Sentinel & Cluster</h3>
+  <p>
+    Araxys v0.10 introduces <strong>Redis high-availability modes</strong> for all backend services:
+  </p>
+  <ul>
+    <li><strong>RedisSentinelPool</strong>: Failover-aware connection pool that auto-discovers the current master via Sentinel monitoring. Reconnects automatically on failover events.</li>
+    <li><strong>RedisClusterPool</strong>: Client-side sharded pool for Redis Cluster deployments, distributing keys across hash slots.</li>
+    <li><strong>Mode routing</strong>: A single <code>mode</code> config field routes all Araxys backends to the correct pool — <code>"standalone"</code> (default), <code>"sentinel"</code>, or <code>"cluster"</code>.</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-comment"># Sentinel mode — automatic failover</span>
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"..."</span>,
+    <span class="token-param">redis</span>={
+        <span class="token-string">"mode"</span>: <span class="token-string">"sentinel"</span>,
+        <span class="token-string">"sentinels"</span>: [(<span class="token-string">"sentinel1"</span>, <span class="token-number">26379</span>), (<span class="token-string">"sentinel2"</span>, <span class="token-number">26379</span>)],
+        <span class="token-string">"master_name"</span>: <span class="token-string">"araxys-master"</span>,
+    },
+)
+
+<span class="token-comment"># Cluster mode — client-side sharding</span>
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"..."</span>,
+    <span class="token-param">redis</span>={
+        <span class="token-string">"mode"</span>: <span class="token-string">"cluster"</span>,
+        <span class="token-string">"startup_nodes"</span>: [(<span class="token-string">"node1"</span>, <span class="token-number">6379</span>), (<span class="token-string">"node2"</span>, <span class="token-number">6379</span>)],
+    },
+)`} /></pre>
+  </div>
+
+  <h3 id="v0100-dlq">Webhook Dead-Letter Queue</h3>
+  <p>
+    Failed webhook deliveries are no longer silently discarded. The new <strong>Redis-backed Dead-Letter Queue (DLQ)</strong> ensures delivery durability:
+  </p>
+  <ul>
+    <li><strong>Retry consumer</strong>: Background worker polls the DLQ and retries with exponential backoff</li>
+    <li><strong>Admin API</strong>: <code>GET /admin/dlq/stats</code>, <code>POST /admin/dlq/retry</code>, <code>DELETE /admin/dlq/purge</code></li>
+    <li><strong>Auto-purge TTL</strong>: Messages older than <code>dlq_ttl_seconds</code> are automatically expired</li>
+    <li><strong>HKDF-derived signing key</strong>: Webhook HMAC keys are derived via HKDF-SHA256 from <code>secret_key</code> with module-specific info to prevent cross-module key reuse</li>
+    <li><strong>SSRF Protection</strong>: 16 private IP ranges blocked (includes IPv4-mapped IPv6), <code>getaddrinfo</code> resolution to catch DNS rebinding, async DNS lookup, <code>follow_redirects=False</code>, delivery semaphore cap</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"..."</span>,
+    <span class="token-param">webhooks</span>=<span class="token-function">WebhookConfig</span>(
+        <span class="token-param">webhook_url</span>=<span class="token-string">"https://hooks.example.com/araxys"</span>,
+        <span class="token-param">dlq_enabled</span>=<span class="token-bool">True</span>,
+        <span class="token-param">dlq_ttl_seconds</span>=<span class="token-number">604800</span>,   <span class="token-comment"># 7-day retention</span>
+        <span class="token-param">dlq_max_retries</span>=<span class="token-number">5</span>,
+        <span class="token-param">delivery_concurrency</span>=<span class="token-number">10</span>,  <span class="token-comment"># Semaphore cap</span>
+    ),
+)`} /></pre>
+  </div>
+
+  <h3 id="v0100-idle">Session Idle Timeout</h3>
+  <p>
+    Sessions now track <strong>last activity</strong> and can be expired after a configurable idle period — independent of the absolute <code>session_ttl</code>:
+  </p>
+  <ul>
+    <li><strong><code>last_activity_at</code></strong>: New field on <code>SessionRecord</code>, updated on each authenticated request</li>
+    <li><strong><code>touch_session()</code></strong>: Explicit method to refresh <code>last_activity_at</code> without creating a new session</li>
+    <li><strong><code>idle_timeout_seconds</code></strong>: Configuration field — session is revoked if idle for longer than this value</li>
+    <li><strong>Automatic idle expiry</strong>: Background cleanup loop now purges idle-expired sessions in addition to TTL-expired ones</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-comment"># Touch session on each authenticated request</span>
+<span class="token-decorator">@app.get</span>(<span class="token-string">"/dashboard"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">dashboard</span>(<span class="token-param">session_id</span>: <span class="token-builtin">str</span>):
+    <span class="token-keyword">await</span> shield.session_manager.<span class="token-function">touch_session</span>(session_id)
+    <span class="token-keyword">return</span> {<span class="token-string">"status"</span>: <span class="token-string">"ok"</span>}
+<span class="token-comment"># Session auto-expires if idle for &gt; idle_timeout_seconds</span>`} /></pre>
+  </div>
+
+  <h3 id="v0100-audit">Security Audit (47 fixes)</h3>
+  <p>Every module received hardening in v0.10.0. Key categories:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Fixes</th>
+        <th>Impact</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Sanitization</strong></td><td>8</td><td>JSON malformed→400, UnicodeDecodeError→400, Content-Type exact match, DELETE method, multipart→400, double URL encoding iterative decode, path exclusion all 3 phases, sqlparse as CORE dependency + 8 new SQL patterns</td></tr>
+      <tr><td><strong>Sessions</strong></td><td>3</td><td>refresh_session persists expires_at, revoke JTI-before-delete, InMemory idle cleanup + stale filtering</td></tr>
+      <tr><td><strong>Rate Limiting & Brute Force</strong></td><td>5</td><td>max_ban_duration_seconds cap, fnmatch exclusion, token hash truncation, InMemory violation timestamps, expire nx=True, HIBP fail_closed properly rejects</td></tr>
+      <tr><td><strong>JWT & Crypto</strong></td><td>5</td><td>Family blacklist Protocol method, atomic JTI SET NX, ConfigurationError on missing asym key, secrets fail_closed wired, MFA recovery codes 80→128 bit, constant-time comparison</td></tr>
+      <tr><td><strong>Auth & Webhooks</strong></td><td>3</td><td>DLQ+Admin composite auth, OAuth open redirect fixed, delivery semaphore cap</td></tr>
+      <tr><td><strong>Audit & Headers</strong></td><td>4</td><td>mask_pii BEFORE structlog, case-insensitive Server strip, Emitter put_nowait drops, Admin Cache-Control no-store</td></tr>
+      <tr><td><strong>Infrastructure</strong></td><td>3</td><td>1,018 tests, mypy strict 138 files, ruff clean</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="v0100-breaking">Breaking Changes</h3>
+  <p>
+    <strong><code>sqlparse</code> is now a core dependency</strong> — it is installed automatically with <code>pip install araxys</code>. No code changes are required on your end. The library is used for SQL injection detection in the sanitization module, supplementing the existing 16 regex patterns with AST-based analysis.
+  </p>
+
+  <!-- Upgrading to v0.10 -->
+  <h2 id="upgrade-v010">Upgrading to v0.10</h2>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">bash</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-comment"># Upgrade Araxys</span>
+pip install --upgrade araxys
+
+<span class="token-comment"># With all optional dependencies (recommended for v0.10 features)</span>
+pip install araxys[all]`} /></pre>
+  </div>
+
+  <p>
+    All v0.10.x features are <strong>opt-in</strong>. Your existing <code>AraxysConfig</code> continues to work unchanged. New modules (WebAuthn, Redis Sentinel/Cluster, Webhook DLQ, Session Idle Timeout) only activate when their config sections are populated. <strong>sqlparse</strong> is now always installed as a core dependency — no action needed.
+  </p>
+
+  <p>
+    See the <a href="/configuration">Configuration</a> page for the complete reference of all config classes, or browse individual module pages for deep-dive documentation.
+  </p>
 
   <!-- v0.9.3 -->
   <h2 id="v093">v0.9.3 — Progressive Delays & JWT nbf</h2>
@@ -374,28 +561,5 @@ chain = <span class="token-function">ChainedResolver</span>([
 ])
 redis_url = <span class="token-keyword">await</span> chain.<span class="token-function">resolve</span>(<span class="token-string">"REDIS_URL"</span>)`} /></pre>
   </div>
-
-  <!-- Quick start for v0.9 -->
-  <h2 id="quick-start">Upgrading to v0.9</h2>
-
-  <div class="code-block">
-    <div class="code-block-header">
-      <span class="code-block-lang">bash</span>
-      <button class="code-block-copy">Copy</button>
-    </div>
-    <pre><code set:html={`<span class="token-comment"># Upgrade Araxys</span>
-pip install --upgrade araxys
-
-<span class="token-comment"># With all optional dependencies (recommended for v0.9 features)</span>
-pip install araxys[all]`} /></pre>
-  </div>
-
-  <p>
-    All v0.9.x features are <strong>opt-in</strong> and fully backward-compatible. Your existing <code>AraxysConfig</code> continues to work unchanged. New modules (MFA, RBAC, OAuth2, Admin API, PostgreSQL pool) only activate when their config sections are populated.
-  </p>
-
-  <p>
-    See the <a href="/configuration">Configuration</a> page for the complete reference of all config classes, or browse individual module pages for deep-dive documentation.
-  </p>
 
 </DocsLayout>

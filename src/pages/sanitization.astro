@@ -25,7 +25,7 @@ import '../styles/global.css';
     <tbody>
       <tr>
         <td><strong>SQL Injection</strong></td>
-        <td>16 regex patterns</td>
+        <td>16 regex patterns + sqlparse (CORE)</td>
         <td><strong>Block</strong> — reject entire request</td>
         <td><code>400 Bad Request</code></td>
       </tr>
@@ -49,7 +49,7 @@ import '../styles/global.css';
   </div>
 
   <h2 id="sqli-patterns">SQL Injection Patterns</h2>
-  <p>Araxys detects 16 SQLi patterns including:</p>
+  <p>Araxys detects 16 SQLi patterns via regex, supplemented by <strong>sqlparse</strong> (now a core dependency since v0.10) with 8 additional AST-based SQL patterns:</p>
   <ul>
     <li><strong>UNION-based</strong>: <code>UNION SELECT</code>, <code>UNION ALL SELECT</code></li>
     <li><strong>Boolean-based blind</strong>: <code>OR 1=1</code>, <code>AND 1=1</code></li>
@@ -167,6 +167,15 @@ config = <span class="token-function">AraxysConfig</span>(
     </div>
   </div>
 
-</DocsLayout>
+  <h2 id="v010-hardening">v0.10 Hardening</h2>
+  <ul>
+    <li><strong>JSON malformed → 400</strong>: Malformed JSON payloads now return <code>400 Bad Request</code> instead of crashing with an internal error.</li>
+    <li><strong>UnicodeDecodeError → 400</strong>: Invalid UTF-8 sequences are caught and rejected cleanly.</li>
+    <li><strong>Content-Type exact match</strong>: Only <code>application/json</code> is accepted for JSON parsing — close variants are rejected.</li>
+    <li><strong>DELETE method</strong>: Body reading is now properly handled for DELETE requests.</li>
+    <li><strong>Multipart → 400</strong>: Multipart form-data requests that reach JSON parsing are cleanly rejected.</li>
+    <li><strong>Double URL encoding</strong>: Iterative decoding catches doubly-encoded payloads (e.g., <code>%2527</code> → <code>%27</code> → <code>'</code>).</li>
+    <li><strong>Path exclusion all 3 phases</strong>: <code>exclude_paths</code> now applies to body, query parameters, and headers consistently.</li>
+  </ul>
 
 </DocsLayout>

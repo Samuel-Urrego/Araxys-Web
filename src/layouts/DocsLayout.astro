@@ -12,12 +12,13 @@ const navSections = [
     label: "Getting Started",
     items: [
       { href: "/", icon: "rocket_launch", label: "Introduction", id: "introduction" },
-      { href: "/whats-new", icon: "new_releases", label: "What's New (v0.9)", id: "whats-new" },
+      { href: "/whats-new", icon: "new_releases", label: "What's New (v0.10)", id: "whats-new" },
     ],
   },
   {
     label: "Security Modules",
     items: [
+      { href: "/webauthn-passkeys", icon: "passkey", label: "WebAuthn / Passkeys", id: "webauthn-passkeys" },
       { href: "/rate-limiting", icon: "traffic", label: "Rate Limiting", id: "rate-limiting" },
       { href: "/brute-force-protection", icon: "lock_reset", label: "Brute Force Protection", id: "brute-force-protection" },
       { href: "/honeypot", icon: "humidity_mid", label: "Honeypot Endpoints", id: "honeypot" },
@@ -38,6 +39,12 @@ const navSections = [
       { href: "/opentelemetry", icon: "timeline", label: "OpenTelemetry", id: "opentelemetry" },
       { href: "/prometheus-metrics", icon: "monitoring", label: "Prometheus Metrics", id: "prometheus-metrics" },
       { href: "/security-webhooks", icon: "webhook", label: "Security Webhooks", id: "security-webhooks" },
+    ],
+  },
+  {
+    label: "Infrastructure",
+    items: [
+      { href: "/redis-sentinel-cluster", icon: "dns", label: "Redis Sentinel & Cluster", id: "redis-sentinel-cluster" },
     ],
   },
   {
@@ -81,7 +88,7 @@ const navSections = [
         <img src="/araxyslogo-nobg.png" alt="Araxys" class="h-12 w-auto logo-invert" />
         <span class="font-semibold text-text-primary text-[15px] tracking-tight" style="font-family: var(--font-headline)">Araxys</span>
       </a>
-      <span class="label-sm text-text-muted bg-surface-high px-2 py-0.5 rounded-sm hidden sm:inline-block">v0.9.3</span>
+      <span class="label-sm text-text-muted bg-surface-high px-2 py-0.5 rounded-sm hidden sm:inline-block">v0.10.1</span>
     </div>
 
     <div class="flex items-center gap-3">
