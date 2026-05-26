@@ -167,6 +167,16 @@ config = <span class="token-function">AraxysConfig</span>(
     </div>
   </div>
 
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      Related: Prompt Injection Detection
+    </div>
+    <div class="alert-content">
+      Sanitization handles <strong>SQLi/XSS</strong> in general request payloads. For <strong>LLM-specific prompt injection attacks</strong> (instruction override, jailbreak, homoglyphs), see the <a href="/prompt-injection">Prompt Injection Detection</a> module. Both modules can be used together for defense in depth.
+    </div>
+  </div>
+
   <h2 id="v010-hardening">v0.10 Hardening</h2>
   <ul>
     <li><strong>JSON malformed → 400</strong>: Malformed JSON payloads now return <code>400 Bad Request</code> instead of crashing with an internal error.</li>

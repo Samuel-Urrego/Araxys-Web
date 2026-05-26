@@ -56,6 +56,9 @@ import '../styles/global.css';
       <tr><td><code>webauthn</code></td><td><code>WebAuthnConfig | None</code></td><td><code>None</code></td><td>—</td><td>WebAuthn / Passkeys configuration (v0.10)</td></tr>
       <tr><td><code>redis</code></td><td><code>dict | None</code></td><td><code>None</code></td><td>—</td><td>Redis HA mode: sentinel/cluster config (v0.10)</td></tr>
       <tr><td><code>prometheus</code></td><td><code>PrometheusConfig | None</code></td><td><code>None</code></td><td>—</td><td>Prometheus metrics configuration</td></tr>
+      <tr><td><code>prompt_injection</code></td><td><code>PromptInjectionConfig | None</code></td><td><code>None</code></td><td>—</td><td>Prompt Injection Detection settings (v0.11)</td></tr>
+      <tr><td><code>scan_files</code></td><td><code>FileScanConfig | None</code></td><td><code>None</code></td><td>—</td><td>File scan settings for prompt injection (v0.11)</td></tr>
+      <tr><td><code>malware</code></td><td><code>MalwareConfig | None</code></td><td><code>None</code></td><td>—</td><td>Malware Scanning settings (v0.12)</td></tr>
     </tbody>
   </table>
 
@@ -74,6 +77,8 @@ import '../styles/global.css';
     SecureHeadersConfig,
     SanitizeConfig,
     AuditConfig,
+    PromptInjectionConfig,
+    MalwareConfig,
 )
 
 config = <span class="token-function">AraxysConfig</span>(
@@ -112,6 +117,18 @@ config = <span class="token-function">AraxysConfig</span>(
     <span class="token-param">audit</span>=<span class="token-function">AuditConfig</span>(
         <span class="token-param">encrypt</span>=<span class="token-bool">True</span>,
         <span class="token-param">log_file</span>=<span class="token-string">"/var/log/araxys/audit.log"</span>,
+    ),
+
+    <span class="token-param">prompt_injection</span>=<span class="token-function">PromptInjectionConfig</span>(
+        <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+        <span class="token-param">detectors</span>=[<span class="token-string">"all"</span>],
+        <span class="token-param">threshold</span>=<span class="token-number">0.8</span>,
+    ),
+
+    <span class="token-param">malware</span>=<span class="token-function">MalwareConfig</span>(
+        <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+        <span class="token-param">detectors</span>=[<span class="token-string">"all"</span>],
+        <span class="token-param">archive_bomb_max_ratio</span>=<span class="token-number">10.0</span>,
     ),
 )</code></pre>
   </div>
@@ -209,6 +226,9 @@ config = <span class="token-function">AraxysConfig</span>(
       <tr><td><code>PrometheusConfig</code></td><td>Metrics</td><td><code>metrics_path</code></td></tr>
       <tr><td><code>WebAuthnConfig</code></td><td>WebAuthn (v0.10)</td><td><code>rp_name</code>, <code>rp_id</code>, <code>origin</code></td></tr>
       <tr><td><code>WebhookDLQConfig</code></td><td>Webhook DLQ (v0.10)</td><td><code>dlq_enabled</code>, <code>dlq_ttl_seconds</code></td></tr>
+      <tr><td><code>PromptInjectionConfig</code></td><td>Prompt Injection (v0.11)</td><td><code>enabled</code>, <code>detectors</code>, <code>threshold</code>, <code>file_scan</code></td></tr>
+      <tr><td><code>FileScanConfig</code></td><td>Prompt Injection File Scan (v0.11)</td><td><code>enabled</code>, <code>scan_images</code>, <code>scan_pdf</code>, <code>scan_office</code></td></tr>
+      <tr><td><code>MalwareConfig</code></td><td>Malware Scanning (v0.12)</td><td><code>enabled</code>, <code>detectors</code>, <code>archive_bomb_max_ratio</code></td></tr>
     </tbody>
   </table>
 
@@ -222,8 +242,80 @@ config = <span class="token-function">AraxysConfig</span>(
       <button class="code-block-copy">Copy</button>
     </div>
     <pre><code><span class="token-comment"># Install Araxys with ALL optional dependencies</span>
-pip install araxys[all]</code></pre>
+pip install araxys[all]
+
+<span class="token-comment"># Prompt Injection — text only</span>
+pip install araxys[prompt_injection]
+
+<span class="token-comment"># Prompt Injection — with file scanning</span>
+pip install araxys[prompt_injection_scan]
+
+<span class="token-comment"># Specific file scanning extras</span>
+pip install araxys[prompt-guard-image]
+pip install araxys[prompt-guard-pdf]
+pip install araxys[prompt-guard-office]</code></pre>
   </div>
+
+  <h2 id="prompt-injection-config">PromptInjectionConfig (v0.11)</h2>
+  <p>Configures the <a href="/prompt-injection">Prompt Injection Guard</a> module. All fields are optional.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable/disable prompt injection detection</td></tr>
+      <tr><td><code>detectors</code></td><td><code>list[str]</code></td><td><code>["all"]</code></td><td>Subset of detectors: <code>"direct_injection"</code>, <code>"jailbreak"</code>, <code>"delimiter_escape"</code>, <code>"zero_width"</code>, <code>"homoglyphs"</code></td></tr>
+      <tr><td><code>file_scan</code></td><td><code>FileScanConfig | None</code></td><td><code>None</code></td><td>File scanning configuration</td></tr>
+      <tr><td><code>exclude_paths</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>Paths excluded from scanning</td></tr>
+      <tr><td><code>threshold</code></td><td><code>float</code></td><td><code>0.8</code></td><td>Minimum confidence score (0.0–1.0) to trigger detection</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="file-scan-config">FileScanConfig (v0.11)</h3>
+  <p>Sub-configuration for prompt injection file scanning. Activates OCR on images, text extraction from PDF, and content analysis of Office documents.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>False</code></td><td>Enable/disable file scanning</td></tr>
+      <tr><td><code>scan_images</code></td><td><code>bool</code></td><td><code>True</code></td><td>Scan JPEG/PNG images via OCR</td></tr>
+      <tr><td><code>scan_pdf</code></td><td><code>bool</code></td><td><code>True</code></td><td>Scan PDF documents</td></tr>
+      <tr><td><code>scan_office</code></td><td><code>bool</code></td><td><code>True</code></td><td>Scan Office documents (DOCX/XLSX/PPTX)</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="malware-config">MalwareConfig (v0.12)</h2>
+  <p>Configures the <a href="/malware-scanning">Malware Scanning</a> module. All fields are optional.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable/disable malware scanning</td></tr>
+      <tr><td><code>detectors</code></td><td><code>list[str]</code></td><td><code>["all"]</code></td><td>Subset of detectors: <code>"magic_bytes"</code>, <code>"mime_mismatch"</code>, <code>"zip_bomb"</code>, <code>"tar_bomb"</code>, <code>"office_macro"</code>, <code>"polyglot"</code>, <code>"double_extension"</code>, <code>"path_traversal"</code>, <code>"size_mismatch"</code></td></tr>
+      <tr><td><code>archive_bomb_max_ratio</code></td><td><code>float</code></td><td><code>10.0</code></td><td>Max compression ratio before flagging as archive bomb</td></tr>
+      <tr><td><code>exclude_paths</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>Paths excluded from scanning</td></tr>
+    </tbody>
+  </table>
 
   <h2 id="graceful-shutdown">Graceful Shutdown</h2>
   <p>

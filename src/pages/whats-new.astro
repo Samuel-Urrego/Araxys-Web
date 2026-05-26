@@ -3,14 +3,22 @@ import DocsLayout from '../layouts/DocsLayout.astro';
 import '../styles/global.css';
 ---
 
-<DocsLayout title="What's New" activeNav="whats-new" description="What's new in Araxys v0.10 — WebAuthn, Redis Sentinel & Cluster, Webhook DLQ, Session Idle Timeout, and 47 security fixes.">
+<DocsLayout title="What's New" activeNav="whats-new" description="What's new in Araxys v0.12 — Malware Scanning, Prompt Injection Detection, WebAuthn, Redis Sentinel & Cluster, Webhook DLQ, Session Idle Timeout.">
 
-  <h2 id="overview">Araxys v0.10 — The Security Hardening Release</h2>
+  <h2 id="overview">Araxys v0.12 — Malware Scanning & Prompt Injection Detection</h2>
   <p>
-    Version <strong>0.10.0</strong> delivers four new security modules (<strong>WebAuthn / Passkeys, Redis Sentinel & Cluster, Webhook Dead-Letter Queue, Session Idle Timeout</strong>) and <strong>47 security fixes</strong> across every existing module. Every component was hardened — sanitization, sessions, rate limiting, brute force, JWT, crypto, audit, and webhooks. This release pushes Araxys test coverage to <strong>1,018 tests</strong>, maintains <strong>mypy strict</strong> on 138 files, and ships <strong>ruff clean</strong>.
+    Version <strong>0.12.0</strong> delivers <strong>Malware Scanning</strong> (9 heuristic detectors with zero external AV dependencies — pure Python heuristics) and version <strong>0.11.0</strong> brings <strong>Prompt Injection Detection</strong> (5 LLM text detectors with optional file scanning for images, PDF, and Office documents). These join the existing v0.10 modules: <strong>WebAuthn / Passkeys, Redis Sentinel & Cluster, Webhook Dead-Letter Queue, Session Idle Timeout</strong> and <strong>47 security fixes</strong>.
   </p>
 
   <div class="not-prose grid grid-cols-1 sm:grid-cols-2 gap-3 my-6">
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.12.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">Malware Scanning — 9 heuristic detectors, archive bomb protection, zero external AV</p>
+    </div>
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.11.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">Prompt Injection Detection — 5 LLM text detectors, file scanning (images/PDF/Office)</p>
+    </div>
     <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
       <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.10.0</span>
       <p class="text-xs text-text-secondary mt-1 leading-relaxed">WebAuthn, Redis Sentinel & Cluster, Webhook DLQ, Session Idle Timeout, 47 security fixes</p>
@@ -35,6 +43,59 @@ import '../styles/global.css';
       <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.0</span>
       <p class="text-xs text-text-secondary mt-1 leading-relaxed">MFA, RBAC, OAuth2/OIDC, PostgreSQL pool</p>
     </div>
+  </div>
+
+  <!-- v0.12.0 -->
+  <h2 id="v0120">v0.12.0 — Malware Scanning</h2>
+  <p>
+    Araxys <strong>Malware Scanner</strong> detects malicious file uploads using <strong>9 heuristic detectors</strong> — all pure Python with <strong>zero external AV dependencies</strong>. No ClamAV, no VirusTotal, no external binaries required.
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> MalwareConfig
+
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">malware</span>=<span class="token-function">MalwareConfig</span>(
+        <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+        <span class="token-param">detectors</span>=[<span class="token-string">"all"</span>],
+        <span class="token-param">archive_bomb_max_ratio</span>=<span class="token-number">10.0</span>,
+    ),
+)`} /></pre>
+  </div>
+
+  <!-- v0.11.0 -->
+  <h2 id="v0110">v0.11.0 — Prompt Injection Detection</h2>
+  <p>
+    Araxys <strong>Prompt Injection Guard</strong> detects LLM-specific injection attacks with <strong>5 text detectors</strong> and <strong>optional file scanning</strong> for images (OCR via pytesseract), PDF, and Office documents (DOCX/XLSX/PPTX).
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> PromptInjectionConfig, FileScanConfig
+
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">prompt_injection</span>=<span class="token-function">PromptInjectionConfig</span>(
+        <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+        <span class="token-param">detectors</span>=[<span class="token-string">"all"</span>],
+        <span class="token-param">file_scan</span>=<span class="token-function">FileScanConfig</span>(
+            <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+            <span class="token-param">scan_images</span>=<span class="token-bool">True</span>,
+            <span class="token-param">scan_pdf</span>=<span class="token-bool">True</span>,
+            <span class="token-param">scan_office</span>=<span class="token-bool">True</span>,
+        ),
+    ),
+)`} /></pre>
   </div>
 
   <!-- v0.10.1 -->

@@ -20,7 +20,7 @@ import '../styles/global.css';
     </p>
     <a href="/whats-new" class="inline-flex items-center gap-1.5 text-sm text-primary-soft hover:text-primary transition-colors mb-8">
       <span class="material-symbols-outlined text-[16px]">new_releases</span>
-      <span>What's new in v0.10 — WebAuthn, Redis Sentinel, DLQ, Session Idle Timeout</span>
+      <span>What's new in v0.12 — Malware Scanning, Prompt Injection Detection, WebAuthn</span>
       <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
     </a>
 
@@ -72,7 +72,7 @@ shield = <span class="token-function">AraxysShield</span>(app, <span class="toke
   </div>
 
   <h2 id="modules">Security Modules</h2>
-  <p>Araxys ships with 20+ production-ready modules, each independently configurable. <a href="/whats-new" class="text-primary-soft hover:underline">See what's new in v0.10 →</a></p>
+  <p>Araxys ships with 22+ production-ready modules, each independently configurable. <a href="/whats-new" class="text-primary-soft hover:underline">See what's new in v0.12 →</a></p>
 
   <div class="not-prose grid grid-cols-1 sm:grid-cols-2 gap-3 my-6">
     <a href="/rate-limiting" class="group block p-4 rounded-lg border border-surface-stroke bg-surface-container hover:bg-surface-high hover:border-primary/30 transition-all duration-200">
@@ -229,6 +229,24 @@ shield = <span class="token-function">AraxysShield</span>(app, <span class="toke
       </div>
       <p class="text-xs text-text-muted leading-relaxed">FIDO2 passwordless auth with biometric passkeys, COSE key parsing, and attestation.</p>
     </a>
+
+    <a href="/prompt-injection" class="group block p-4 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">smart_toy</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Prompt Injection Detection</span>
+        <span class="text-[9px] bg-primary/15 text-primary-soft px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">NEW</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">5 detectors for LLM injection attacks — instruction override, jailbreak, homoglyphs, and file scanning.</p>
+    </a>
+
+    <a href="/malware-scanning" class="group block p-4 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition-all duration-200">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary-soft">bug_report</span>
+        <span class="font-semibold text-sm text-text-primary group-hover:text-primary-soft transition-colors" style="font-family: var(--font-headline)">Malware Scanning</span>
+        <span class="text-[9px] bg-primary/15 text-primary-soft px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">NEW</span>
+      </div>
+      <p class="text-xs text-text-muted leading-relaxed">9 heuristic detectors with zero external AV — magic bytes, MIME, archive bombs, macros, and more.</p>
+    </a>
   </div>
 
   <h2 id="installation">Installation</h2>
@@ -332,6 +350,9 @@ shield = <span class="token-function">AraxysShield</span>(
 ├── prometheus/          <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">monitoring</span> Prometheus metrics</span>
 │   ├── metrics.py      <span class="token-comment"># 9 counters + histogram</span>
 │   └── middleware.py   <span class="token-comment"># /metrics endpoint</span>
+├── prompt_injection/   <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">smart_toy</span> Prompt injection detection</span>
+│   ├── scanner.py     <span class="token-comment"># 5 LLM text detectors</span>
+│   └── file_scan.py   <span class="token-comment"># OCR/PDF/Office scanning</span>
 ├── api_keys/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">vpn_key</span> API Key management</span>
 │   ├── models.py       <span class="token-comment"># Pydantic models</span>
 │   ├── manager.py      <span class="token-comment"># CRUD + verification</span>
@@ -341,6 +362,8 @@ shield = <span class="token-function">AraxysShield</span>(
 │   ├── tokens.py       <span class="token-comment"># Create, decode, rotate</span>
 │   ├── storage.py      <span class="token-comment"># JTI blacklisting</span>
 │   └── dependencies.py <span class="token-comment"># FastAPI dependencies</span>
+├── malware/            <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">bug_report</span> Malware scanning</span>
+│   └── scanner.py     <span class="token-comment"># 9 heuristic detectors</span>
 ├── headers/            <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">shield</span> Security headers</span>
 │   └── middleware.py   <span class="token-comment"># HSTS, CSP, X-Frame-Options</span>
 ├── sanitize/           <span class="token-comment"># <span class="material-symbols-outlined text-[14px] align-middle">cleaning_services</span> Input sanitization</span>

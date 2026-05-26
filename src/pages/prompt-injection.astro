@@ -1,0 +1,250 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="Prompt Injection Detection" activeNav="prompt-injection" description="LLM-specific prompt injection detection for FastAPI — instruction override, jailbreak, homoglyphs, and more.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys <strong>Prompt Injection Guard</strong> detects LLM-specific injection attacks targeting your AI-powered endpoints. While the <a href="/sanitization">Sanitization</a> module handles SQLi/XSS, Prompt Injection focuses on five distinct attack vectors that target large language models: <strong>direct injection</strong>, <strong>jailbreak attempts</strong>, <strong>delimiter escape</strong>, <strong>zero-width characters</strong>, and <strong>homoglyph substitution</strong>.
+  </p>
+  <p>
+    The module is gated by <code>PromptInjectionConfig</code> — set it to a non-<code>None</code> value in <code>AraxysConfig</code> to activate. It supports both <strong>ASGI middleware</strong> (global scanning) and <strong>FastAPI dependency injection</strong> (per-route protection).
+  </p>
+
+  <h2 id="how-it-works">How It Works</h2>
+  <p>
+    The scanner analyzes request text content against five pluggable detectors. Each detector implements a common interface and reports matches with a confidence score. Matches above the configured <code>threshold</code> trigger a <code>400 Bad Request</code> response with a <code>PromptInjectionError</code>.
+  </p>
+
+  <h2 id="text-detectors">Text Detectors</h2>
+  <p>Five pre-built detectors for LLM-specific injection attacks:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Detector</th>
+        <th>Description</th>
+        <th>Example Attack</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Direct Injection</strong></td>
+        <td>Detects standalone injection payloads that attempt to override the system prompt or insert malicious instructions</td>
+        <td><code>Ignore all previous instructions and...</code></td>
+      </tr>
+      <tr>
+        <td><strong>Jailbreak</strong></td>
+        <td>Identifies known jailbreak patterns — DAN (Do Anything Now), role-play escapes, and adversarial suffixes</td>
+        <td><code>From now on you are DAN...</code></td>
+      </tr>
+      <tr>
+        <td><strong>Delimiter Escape</strong></td>
+        <td>Catches attempts to break out of prompt delimiters using closing tags, brackets, or special sequences</td>
+        <td><code>} &lt;/s&gt; New instructions: ...</code></td>
+      </tr>
+      <tr>
+        <td><strong>Zero-Width Characters</strong></td>
+        <td>Detects zero-width space (U+200B), zero-width joiner (U+200D), and other invisible Unicode characters used to bypass filters</td>
+        <td><code>​Ignore ​previous ​instructions</code> (with zero-width spaces)</td>
+      </tr>
+      <tr>
+        <td><strong>Homoglyphs</strong></td>
+        <td>Identifies Unicode homoglyph substitution — visually identical characters from different scripts used to bypass keyword filters</td>
+        <td><code>аdmin</code> (Cyrillic 'а' instead of Latin 'a')</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="file-scanning">File Scanning</h2>
+  <p>
+    Prompt Injection can also be embedded in uploaded files. Araxys supports optional file scanning for three formats:
+  </p>
+  <ul>
+    <li><strong>Images</strong> (JPEG/PNG): OCR text extraction via <code>pytesseract</code></li>
+    <li><strong>PDF</strong>: Text extraction from PDF documents</li>
+    <li><strong>Office Documents</strong> (DOCX/XLSX/PPTX): Text extraction from Word, Excel, and PowerPoint files</li>
+  </ul>
+
+  <div class="alert alert--warning">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+      File Scanning Latency
+    </div>
+    <div class="alert-content">
+      File scanning adds <strong>significant latency</strong> to requests — OCR and PDF parsing are CPU-intensive operations. Enable only for endpoints that accept file uploads, or use per-route <code>PromptInjectionGuard</code> instead of global middleware.
+    </div>
+  </div>
+
+  <h2 id="using-the-guard">Using the Guard</h2>
+
+  <h3 id="shield-setup">Activation via AraxysShield (Global Middleware)</h3>
+  <p>
+    Set <code>prompt_injection</code> to a <code>PromptInjectionConfig</code> instance in your <code>AraxysConfig</code>. The middleware reads the request body, scans text content, and returns <code>400 Bad Request</code> on detection:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> FastAPI
+<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysShield, AraxysConfig
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> PromptInjectionConfig
+
+app = <span class="token-function">FastAPI</span>()
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">prompt_injection</span>=<span class="token-function">PromptInjectionConfig</span>(
+            <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+            <span class="token-param">detectors</span>=[<span class="token-string">"direct_injection"</span>, <span class="token-string">"jailbreak"</span>, <span class="token-string">"homoglyphs"</span>],
+            <span class="token-param">threshold</span>=<span class="token-number">0.8</span>,
+        ),
+    ),
+)`} /></pre>
+  </div>
+
+  <h3 id="per-endpoint-guard">Per-Route Protection (Dependency Injection)</h3>
+  <p>
+    Use <code>PromptInjectionGuard</code> as a FastAPI <code>Depends</code> on specific endpoints. This bypasses the global middleware and scans only the routes you choose:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys.guards <span class="token-keyword">import</span> PromptInjectionGuard
+<span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> Depends
+
+<span class="token-decorator">@app.post</span>(<span class="token-string">"/chat"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">chat</span>(
+    <span class="token-param">body</span>: ChatRequest,
+    <span class="token-param">_</span>: <span class="token-builtin">None</span> = <span class="token-function">Depends</span>(<span class="token-function">PromptInjectionGuard</span>()),
+):
+    <span class="token-keyword">return</span> {<span class="token-string">"response"</span>: <span class="token-keyword">await</span> llm.<span class="token-function">generate</span>(body.<span class="token-param">prompt</span>)}
+
+<span class="token-decorator">@app.post</span>(<span class="token-string">"/analyze-file"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">analyze_file</span>(
+    <span class="token-param">file</span>: UploadFile,
+    <span class="token-param">_</span>: <span class="token-builtin">None</span> = <span class="token-function">Depends</span>(<span class="token-function">PromptInjectionGuard</span>(<span class="token-param">scan_files</span>=<span class="token-bool">True</span>)),
+):
+    <span class="token-comment"># Only this endpoint scans uploaded files</span>
+    content = <span class="token-keyword">await</span> file.<span class="token-function">read</span>()
+    <span class="token-keyword">return</span> {<span class="token-string">"size"</span>: <span class="token-builtin">len</span>(content)}`} /></pre>
+  </div>
+
+  <h3 id="direct-scanner">Direct Scanner Usage</h3>
+  <p>
+    Use the <code>PromptInjectionScanner</code> directly for custom integration:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys.prompt_injection.scanner <span class="token-keyword">import</span> PromptInjectionScanner
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> PromptInjectionConfig
+
+scanner = <span class="token-function">PromptInjectionScanner</span>(
+    <span class="token-function">PromptInjectionConfig</span>(
+        <span class="token-param">enabled</span>=<span class="token-bool">True</span>,
+        <span class="token-param">threshold</span>=<span class="token-number">0.7</span>,
+    ),
+)
+
+result = <span class="token-keyword">await</span> scanner.<span class="token-function">scan_text</span>(<span class="token-string">"Ignore all previous instructions and..."</span>)
+<span class="token-comment"># ScanResult(detected=True, detector="direct_injection", confidence=0.95)</span>
+
+<span class="token-keyword">if</span> result.<span class="token-param">detected</span>:
+    <span class="token-keyword">raise</span> <span class="token-function">PromptInjectionError</span>(result.<span class="token-param">detector</span>)`} /></pre>
+  </div>
+
+  <h2 id="configuration-reference">Configuration Reference</h2>
+
+  <h3 id="prompt-injection-config">PromptInjectionConfig</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable/disable prompt injection detection</td></tr>
+      <tr><td><code>detectors</code></td><td><code>list[str]</code></td><td><code>["all"]</code></td><td>Subset of detectors to enable: <code>"direct_injection"</code>, <code>"jailbreak"</code>, <code>"delimiter_escape"</code>, <code>"zero_width"</code>, <code>"homoglyphs"</code>, or <code>"all"</code></td></tr>
+      <tr><td><code>file_scan</code></td><td><code>FileScanConfig | None</code></td><td><code>None</code></td><td>File scanning configuration (images/PDF/Office)</td></tr>
+      <tr><td><code>exclude_paths</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>Paths excluded from scanning</td></tr>
+      <tr><td><code>threshold</code></td><td><code>float</code></td><td><code>0.8</code></td><td>Minimum confidence score (0.0–1.0) to trigger a detection</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="file-scan-config">FileScanConfig</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>False</code></td><td>Enable/disable file scanning</td></tr>
+      <tr><td><code>scan_images</code></td><td><code>bool</code></td><td><code>True</code></td><td>Scan JPEG/PNG images via OCR (requires <code>pytesseract</code>)</td></tr>
+      <tr><td><code>scan_pdf</code></td><td><code>bool</code></td><td><code>True</code></td><td>Scan PDF documents for embedded text</td></tr>
+      <tr><td><code>scan_office</code></td><td><code>bool</code></td><td><code>True</code></td><td>Scan Office documents (DOCX/XLSX/PPTX)</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="type-reference">Type Reference</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>ScanResult</code></td><td>Shared result type with fields: <code>detected</code> (bool), <code>detector</code> (str), <code>confidence</code> (float), <code>details</code> (dict | None)</td></tr>
+      <tr><td><code>PromptInjectionError</code></td><td>Exception raised on detection, extends <code>AraxysSecurityError</code>. Includes <code>detector</code> and <code>confidence</code> attributes.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="installation">Installation</h2>
+  <p>
+    Prompt Injection detection is an <strong>optional module</strong>. Install the extras you need:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">bash</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Text-only detection (no file scanning)</span>
+<span class="token-function">pip</span> install araxys[prompt_injection]
+
+<span class="token-comment"># With file scanning (images/PDF/Office)</span>
+<span class="token-function">pip</span> install araxys[prompt_injection_scan]
+
+<span class="token-comment"># Everything</span>
+<span class="token-function">pip</span> install araxys[all]
+
+<span class="token-comment"># Specific file scanning extras</span>
+<span class="token-function">pip</span> install araxys[prompt-guard-image]
+<span class="token-function">pip</span> install araxys[prompt-guard-pdf]
+<span class="token-function">pip</span> install araxys[prompt-guard-office]</code></pre>
+  </div>
+
+</DocsLayout>
