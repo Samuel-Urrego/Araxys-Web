@@ -474,13 +474,27 @@ body {
    RESPONSIVE
    ============================================ */
 
+/* --- Tablet: hide TOC, free up space --- */
 @media (max-width: 1280px) {
   .toc-sidebar {
     display: none;
   }
 }
 
+/* --- Tablet-to-mobile: content spacing --- */
+@media (max-width: 1024px) {
+  .prose h2 {
+    margin-top: 2rem;
+  }
+
+  .prose h3 {
+    margin-top: 1.5rem;
+  }
+}
+
+/* --- Mobile --- */
 @media (max-width: 768px) {
+  /* Typography scale-down */
   .headline-xl {
     font-size: 32px;
     line-height: 40px;
@@ -491,18 +505,125 @@ body {
     line-height: 32px;
   }
 
+  .headline-md {
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  .body-lg {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  /* Prose headings */
+  .prose h2 {
+    font-size: 22px;
+    line-height: 30px;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .prose h3 {
+    font-size: 18px;
+    line-height: 26px;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .prose p,
+  .prose li {
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  /* Scrollable tables — critical for config/detector tables */
+  .prose table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .prose thead th,
+  .prose tbody td {
+    white-space: nowrap;
+    padding: 0.6rem 0.75rem;
+    font-size: 13px;
+  }
+
+  /* Code blocks — smaller font, tighter padding */
+  .code-block pre {
+    font-size: 12px;
+    line-height: 20px;
+    padding: 0.75rem;
+  }
+
+  .code-block-header {
+    padding: 0.4rem 0.75rem;
+  }
+
+  .code-block-lang,
+  .code-block-copy {
+    font-size: 11px;
+  }
+
+  /* Alert/callout components */
+  .alert {
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+  }
+
+  .alert-title {
+    font-size: 12px;
+  }
+
+  .alert-content {
+    font-size: 13px;
+  }
+
+  /* Mobile nav sidebar */
   .nav-sidebar {
     transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: fixed;
     z-index: 50;
+    width: 260px;
   }
 
   .nav-sidebar.open {
     transform: translateX(0);
   }
+}
 
-  .mobile-overlay {
-    display: block;
+/* --- Small phones --- */
+@media (max-width: 480px) {
+  .headline-xl {
+    font-size: 28px;
+    line-height: 36px;
+  }
+
+  .headline-lg {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .prose h2 {
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  .prose h3 {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .code-block pre {
+    font-size: 11px;
+    line-height: 18px;
+  }
+
+  .nav-sidebar {
+    width: calc(100vw - 40px);
+    max-width: 280px;
   }
 }

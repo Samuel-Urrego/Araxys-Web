@@ -32,3 +32,5 @@ desktop.ini
 # VS Code
 .vscode/
 *.code-workspace
+
+.atl
