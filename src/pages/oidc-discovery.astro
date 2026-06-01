@@ -1,0 +1,180 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="OIDC Discovery" activeNav="oidc-discovery" description="OIDC Discovery (RFC 8414) client for FastAPI — fetch, validate, and cache OpenID Connect provider metadata.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys <strong>OIDC Discovery</strong> implements <strong>RFC 8414</strong> — the OpenID Connect Discovery protocol. It fetches provider metadata from the well-known endpoint (<code>{'{'}issuer{'}'}/.well-known/openid-configuration</code>), validates the response against a strict Pydantic model, and caches results in memory with configurable TTL.
+  </p>
+  <p>
+    This module is the foundation for dynamic OIDC provider configuration — instead of hardcoding endpoints like <code>authorization_endpoint</code>, <code>token_endpoint</code>, and <code>jwks_uri</code>, you provide just the <code>issuer_url</code> and Araxys discovers the rest automatically.
+  </p>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      RFC 8414 Compliance
+    </div>
+    <div class="alert-content">
+      The module validates all required metadata fields per RFC 8414 §2: <code>issuer</code>, <code>authorization_endpoint</code>, <code>token_endpoint</code>, and <code>jwks_uri</code>. Optional fields like <code>userinfo_endpoint</code>, <code>scopes_supported</code>, and <code>response_types_supported</code> are parsed when present.
+    </div>
+  </div>
+
+  <h2 id="how-it-works">How It Works</h2>
+  <p>
+    The <code>OIDCDiscoveryClient</code> follows a straightforward flow:
+  </p>
+  <ol>
+    <li><strong>Normalize</strong>: Strips trailing slashes from the issuer URL for consistent caching</li>
+    <li><strong>Cache check</strong>: Returns cached metadata if within the TTL window (default: 5 minutes)</li>
+    <li><strong>Fetch</strong>: Makes an HTTPS GET to <code>{'{'}issuer{'}'}/.well-known/openid-configuration</code></li>
+    <li><strong>Validate</strong>: Parses the JSON response into <code>OIDCProviderMetadata</code> (Pydantic model with required field validation)</li>
+    <li><strong>Cache</strong>: Stores the result in memory with the wall-clock timestamp for TTL enforcement</li>
+  </ol>
+
+  <h2 id="configuration">Configuration</h2>
+
+  <h3 id="oidc-discovery-config">OIDCDiscoveryConfig</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>bool</code></td><td><code>True</code></td><td>Enable/disable OIDC discovery client</td></tr>
+      <tr><td><code>cache_ttl_seconds</code></td><td><code>int</code></td><td><code>300</code></td><td>Cache time-to-live in seconds (default 5 min)</td></tr>
+      <tr><td><code>timeout_seconds</code></td><td><code>int</code></td><td><code>10</code></td><td>HTTP request timeout in seconds</td></tr>
+      <tr><td><code>verify_ssl</code></td><td><code>bool</code></td><td><code>True</code></td><td>Verify TLS certificates when fetching discovery documents</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="using-oidc">Using OIDC Discovery</h2>
+
+  <h3 id="basic-usage">Basic Usage</h3>
+  <p>
+    Create an <code>OIDCDiscoveryClient</code> and call <code>discover()</code> with the issuer URL:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> OIDCDiscoveryClient
+
+client = <span class="token-function">OIDCDiscoveryClient</span>()
+metadata = <span class="token-keyword">await</span> client.<span class="token-function">discover</span>(<span class="token-string">"https://accounts.google.com"</span>)
+
+<span class="token-builtin">print</span>(metadata.<span class="token-param">issuer</span>)                     <span class="token-comment"># https://accounts.google.com</span>
+<span class="token-builtin">print</span>(metadata.<span class="token-param">authorization_endpoint</span>)      <span class="token-comment"># https://accounts.google.com/o/oauth2/v2/auth</span>
+<span class="token-builtin">print</span>(metadata.<span class="token-param">token_endpoint</span>)              <span class="token-comment"># https://oauth2.googleapis.com/token</span>
+<span class="token-builtin">print</span>(metadata.<span class="token-param">jwks_uri</span>)                    <span class="token-comment"># https://www.googleapis.com/oauth2/v3/certs</span>
+<span class="token-builtin">print</span>(metadata.<span class="token-param">userinfo_endpoint</span>)           <span class="token-comment"># https://openidconnect.googleapis.com/v1/userinfo</span>`} /></pre>
+  </div>
+
+  <h3 id="custom-config">Custom Configuration</h3>
+  <p>
+    Override cache TTL, timeout, or SSL verification:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> OIDCDiscoveryClient
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> OIDCDiscoveryConfig
+
+client = <span class="token-function">OIDCDiscoveryClient</span>(
+    <span class="token-function">OIDCDiscoveryConfig</span>(
+        <span class="token-param">cache_ttl_seconds</span>=<span class="token-number">60</span>,   <span class="token-comment"># Refresh every minute</span>
+        <span class="token-param">timeout_seconds</span>=<span class="token-number">5</span>,     <span class="token-comment"># 5-second timeout</span>
+        <span class="token-param">verify_ssl</span>=<span class="token-bool">True</span>,
+    ),
+)
+
+<span class="token-comment"># Subsequent calls within 60s return cached metadata</span>
+metadata = <span class="token-keyword">await</span> client.<span class="token-function">discover</span>(<span class="token-string">"https://accounts.google.com"</span>)`} /></pre>
+  </div>
+
+  <h3 id="integration-with-oauth">Integration with OAuth2 Flow</h3>
+  <p>
+    Use discovered metadata to dynamically configure the OAuth2 flow:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> OIDCDiscoveryClient
+<span class="token-keyword">from</span> araxys.oauth <span class="token-keyword">import</span> OAuth2Flow, generic_provider
+
+<span class="token-comment"># Discover provider metadata</span>
+client = <span class="token-function">OIDCDiscoveryClient</span>()
+metadata = <span class="token-keyword">await</span> client.<span class="token-function">discover</span>(<span class="token-string">"https://your-idp.example.com"</span>)
+
+<span class="token-comment"># Configure OAuth2 flow from discovered endpoints</span>
+provider = <span class="token-function">generic_provider</span>(
+    <span class="token-param">authorization_endpoint</span>=metadata.<span class="token-param">authorization_endpoint</span>,
+    <span class="token-param">token_endpoint</span>=metadata.<span class="token-param">token_endpoint</span>,
+    <span class="token-param">client_id</span>=<span class="token-string">"your-client-id"</span>,
+    <span class="token-param">client_secret</span>=<span class="token-string">"your-client-secret"</span>,
+)
+
+flow = <span class="token-function">OAuth2Flow</span>(provider, <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>)
+<span class="token-comment"># Use flow.authorization_url(), exchange_code(), userinfo()...</span>`} /></pre>
+  </div>
+
+  <div class="alert alert--warning">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+      Network Errors & Caching
+    </div>
+    <div class="alert-content">
+      The client raises <code>OIDCDiscoveryError</code> on network failures, timeouts, or invalid metadata. The in-memory cache uses wall-clock time — if your server's clock is skewed, TTL enforcement may behave unexpectedly. The cache is per-instance and is lost on process restart.
+    </div>
+  </div>
+
+  <h2 id="type-reference">Type Reference</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>OIDCProviderMetadata</code></td><td>Pydantic model with fields: <code>issuer</code>, <code>authorization_endpoint</code>, <code>token_endpoint</code>, <code>jwks_uri</code> (required); <code>userinfo_endpoint</code>, <code>scopes_supported</code>, <code>response_types_supported</code> (optional)</td></tr>
+      <tr><td><code>OIDCDiscoveryError</code></td><td>Exception raised on discovery failures, extends <code>AraxysError</code>. Includes <code>issuer_url</code> and <code>detail</code> attributes.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="installation">Installation</h2>
+  <p>
+    OIDC Discovery requires <code>httpx</code> for HTTP requests, which is already part of Araxys core dependencies:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">bash</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Everything: all modules</span>
+<span class="token-function">pip</span> install araxys[all]
+
+<span class="token-comment"># OIDC Discovery is included in araxys core (httpx is a core dependency)</span>
+<span class="token-function">pip</span> install araxys
+<span class="token-comment"># No extra dependencies needed — httpx is always installed with araxys</span></code></pre>
+  </div>
+
+</DocsLayout>

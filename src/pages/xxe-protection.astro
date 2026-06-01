@@ -1,0 +1,230 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import '../styles/global.css';
+---
+
+<DocsLayout title="XXE Protection" activeNav="xxe-protection" description="XML External Entity (XXE) attack protection for FastAPI — regex pre-scanning, defusedxml support, ASGI middleware, and per-endpoint guards.">
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Araxys <strong>XXE Protection</strong> detects and blocks XML External Entity (XXE) attacks — including <strong>billion-laughs entity expansion</strong>, <strong>file disclosure via SYSTEM entities</strong>, <strong>SSRF via external entities</strong>, and <strong>DTD-based attacks</strong>. The module works with <strong>zero required external dependencies</strong> — use it standalone with regex pre-scanning or optionally pair it with <code>defusedxml</code> for deeper parser-level protection.
+  </p>
+  <p>
+    The module is gated by <code>XXEConfig</code> — set it to a non-<code>None</code> value in <code>AraxysConfig</code> to activate. It supports both <strong>ASGI middleware</strong> (global XML scanning) and <strong>FastAPI dependency injection</strong> (per-route protection).
+  </p>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      Zero Required Dependencies
+    </div>
+    <div class="alert-content">
+      The XXE module works <strong>out of the box with no external packages</strong>. The regex pre-scanner catches dangerous patterns before any XML parser touches the input. When <code>defusedxml</code> is installed (via <code>araxys[xxe]</code>), it's used as the primary parser with automatic fallback to stdlib <code>xml.etree.ElementTree</code>.
+    </div>
+  </div>
+
+  <h2 id="how-it-works">How It Works</h2>
+  <p>
+    The scanner inspects XML content using a <strong>3-stage detection strategy</strong>:
+  </p>
+  <ol>
+    <li><strong>Regex pre-scan</strong>: Scans raw XML text for <code>&lt;!DOCTYPE</code>, <code>&lt;!ENTITY</code>, <code>SYSTEM</code>, and <code>PUBLIC</code> patterns before any XML parser touches the input. This catches the dangerous classes without needing defusedxml.</li>
+    <li><strong>defusedxml (optional)</strong>: If the optional <code>defusedxml</code> package is installed, it's used as the primary parser. <code>DefusedXmlException</code> is caught and reported as a threat.</li>
+    <li><strong>stdlib fallback</strong>: <code>xml.etree.ElementTree</code> is used when defusedxml is unavailable. The regex pre-scan has already blocked dangerous declarations, so this path only processes pre-validated XML.</li>
+  </ol>
+
+  <div class="alert alert--warning">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+      ElementTree Without Pre-Scan Is NOT Safe
+    </div>
+    <div class="alert-content">
+      Python's stdlib <code>xml.etree.ElementTree</code> is vulnerable to XXE attacks when used alone. The regex pre-scan is the actual defence — it runs <strong>before</strong> any parser, ensuring dangerous declarations never reach ElementTree.
+    </div>
+  </div>
+
+  <h2 id="configuration">Configuration</h2>
+
+  <h3 id="xxe-config">XXEConfig</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>forbid_dtd</code></td><td><code>bool</code></td><td><code>True</code></td><td>Reject DOCTYPE declarations entirely</td></tr>
+      <tr><td><code>forbid_entities</code></td><td><code>bool</code></td><td><code>True</code></td><td>Reject internal/external entity references</td></tr>
+      <tr><td><code>forbid_external</code></td><td><code>bool</code></td><td><code>True</code></td><td>Reject external entity SYSTEM/PUBLIC access (file://, http://, etc.)</td></tr>
+      <tr><td><code>exclude_paths</code></td><td><code>list[str]</code></td><td><code>["/docs", "/redoc", "/openapi.json", "/healthz"]</code></td><td>Paths excluded from XXE middleware scanning</td></tr>
+      <tr><td><code>exclude_content_types</code></td><td><code>list[str]</code></td><td><code>[]</code></td><td>Content types excluded from XXE middleware scanning</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="using-xxe">Using XXE Protection</h2>
+
+  <h3 id="shield-setup">Activation via AraxysShield (Global Middleware)</h3>
+  <p>
+    Set <code>xxe</code> to an <code>XXEConfig</code> instance in your <code>AraxysConfig</code>. The middleware intercepts XML content types, scans the request body, and returns <code>400 Bad Request</code> on detection:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> FastAPI
+<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysShield, AraxysConfig
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> XXEConfig
+
+app = <span class="token-function">FastAPI</span>()
+
+shield = <span class="token-function">AraxysShield</span>(
+    app,
+    <span class="token-function">AraxysConfig</span>(
+        <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+        <span class="token-param">xxe</span>=<span class="token-function">XXEConfig</span>(
+            <span class="token-param">forbid_dtd</span>=<span class="token-bool">True</span>,
+            <span class="token-param">forbid_entities</span>=<span class="token-bool">True</span>,
+            <span class="token-param">forbid_external</span>=<span class="token-bool">True</span>,
+        ),
+    ),
+)`} /></pre>
+  </div>
+
+  <h3 id="per-endpoint-guard">Per-Route Protection (Dependency Injection)</h3>
+  <p>
+    Use <code>xxe_guard()</code> as a FastAPI <code>Depends</code> to protect specific XML endpoints:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> fastapi <span class="token-keyword">import</span> Body, Depends
+<span class="token-keyword">from</span> araxys.xxe.dependencies <span class="token-keyword">import</span> xxe_guard
+
+<span class="token-decorator">@app.post</span>(<span class="token-string">"/xml"</span>)
+<span class="token-keyword">async def</span> <span class="token-function">parse_xml</span>(
+    <span class="token-param">body</span>: <span class="token-builtin">str</span> = <span class="token-function">Body</span>(...),
+    <span class="token-param">_</span>: <span class="token-builtin">None</span> = <span class="token-function">Depends</span>(<span class="token-function">xxe_guard</span>()),
+):
+    <span class="token-comment"># If we get here, the XML is clean</span>
+    <span class="token-keyword">return</span> {<span class="token-string">"status"</span>: <span class="token-string">"parsed"</span>, <span class="token-string">"length"</span>: <span class="token-builtin">len</span>(body)}`} /></pre>
+  </div>
+
+  <h3 id="direct-scanner">Direct Scanner Usage</h3>
+  <p>
+    Use the <code>XXEScanner</code> directly for custom integration:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys.xxe.scanner <span class="token-keyword">import</span> XXEScanner
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> XXEConfig
+
+scanner = <span class="token-function">XXEScanner</span>(
+    <span class="token-function">XXEConfig</span>(forbid_dtd=<span class="token-bool">True</span>, forbid_entities=<span class="token-bool">True</span>),
+)
+
+result = scanner.<span class="token-function">scan</span>(<span class="token-string">"&lt;?xml version=&quot;1.0&quot;?&gt;&lt;!DOCTYPE foo [&lt;!ENTITY xxe SYSTEM &quot;file:///etc/passwd&quot;&gt;]&gt;&lt;root&gt;&amp;xxe;&lt;/root&gt;"</span>)
+<span class="token-comment"># ScanResult(is_threat=True, threat_score=1.0, detectors_triggered=["dtd", "entity", "external_entity"])</span>
+
+<span class="token-keyword">if</span> result.<span class="token-param">is_threat</span>:
+    <span class="token-keyword">raise</span> <span class="token-function">XXEError</span>(
+        <span class="token-param">detection_type</span>=result.<span class="token-param">detectors_triggered</span>[<span class="token-number">0</span>],
+        <span class="token-param">detail</span>=result.<span class="token-param">matched_pattern</span>,
+    )`} /></pre>
+  </div>
+
+  <h2 id="detection-types">Detection Types</h2>
+
+  <p>The scanner detects four categories of XXE attacks, controlled by the corresponding <code>forbid_*</code> toggles:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Detection Type</th>
+        <th>Config Toggle</th>
+        <th>Example Attack</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>DTD Declaration</strong></td>
+        <td><code>forbid_dtd</code></td>
+        <td><code>&lt;!DOCTYPE foo [...]&gt;</code></td>
+      </tr>
+      <tr>
+        <td><strong>Entity Declaration</strong></td>
+        <td><code>forbid_entities</code></td>
+        <td><code>&lt;!ENTITY xxe "value"&gt;</code></td>
+      </tr>
+      <tr>
+        <td><strong>SYSTEM External Entity</strong></td>
+        <td><code>forbid_external</code></td>
+        <td><code>&lt;!ENTITY xxe SYSTEM "file:///etc/passwd"&gt;</code></td>
+      </tr>
+      <tr>
+        <td><strong>PUBLIC External Entity</strong></td>
+        <td><code>forbid_external</code></td>
+        <td><code>&lt;!ENTITY xxe PUBLIC "-//W3C//DTD XHTML 1.0//EN" "http://evil.com/dtd"&gt;</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert--info">
+    <div class="alert-title">
+      <span class="material-symbols-outlined" style="font-size: 16px;">info</span>
+      All Protections Enabled by Default
+    </div>
+    <div class="alert-content">
+      All three <code>forbid_*</code> toggles default to <code>True</code>, providing maximal protection out of the box. Set individual toggles to <code>False</code> to selectively allow DTD declarations, entity references, or external entity access when your use case requires it.
+    </div>
+  </div>
+
+  <h2 id="type-reference">Type Reference</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>ScanResult</code></td><td>Shared result type with fields: <code>is_threat</code> (bool), <code>threat_score</code> (float), <code>detectors_triggered</code> (list[str]), <code>matched_pattern</code> (str | None), <code>metadata</code> (dict | None)</td></tr>
+      <tr><td><code>XXEError</code></td><td>Exception raised on detection, extends <code>AraxysError</code>. Includes <code>detection_type</code>, <code>detail</code>, and <code>source_ip</code> attributes.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="installation">Installation</h2>
+  <p>
+    XXE Protection is included in the <code>araxys[all]</code> meta-package. The module works <strong>without any extra dependencies</strong>, but you can optionally install <code>defusedxml</code> for parser-level protection:
+  </p>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">bash</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code><span class="token-comment"># Everything: all modules</span>
+<span class="token-function">pip</span> install araxys[all]
+
+<span class="token-comment"># XXE with defusedxml parser protection (recommended)</span>
+<span class="token-function">pip</span> install araxys[xxe]
+
+<span class="token-comment"># XXE is also included in araxys core (regex pre-scan only)</span>
+<span class="token-function">pip</span> install araxys
+<span class="token-comment"># No extra dependencies needed — regex pre-scan works standalone</span></code></pre>
+  </div>
+
+</DocsLayout>

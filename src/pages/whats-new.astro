@@ -3,14 +3,22 @@ import DocsLayout from '../layouts/DocsLayout.astro';
 import '../styles/global.css';
 ---
 
-<DocsLayout title="What's New" activeNav="whats-new" description="What's new in Araxys v0.12 — Malware Scanning, Prompt Injection Detection, WebAuthn, Redis Sentinel & Cluster, Webhook DLQ, Session Idle Timeout.">
+<DocsLayout title="What's New" activeNav="whats-new" description="What's new in Araxys v0.13 — XXE Protection, OIDC Discovery, Malware Scanning, Prompt Injection Detection, and more.">
 
-  <h2 id="overview">Araxys v0.12 — Malware Scanning & Prompt Injection Detection</h2>
+  <h2 id="overview">Araxys v0.13 — XXE Protection & OIDC Discovery</h2>
   <p>
-    Version <strong>0.12.0</strong> delivers <strong>Malware Scanning</strong> (9 heuristic detectors with zero external AV dependencies — pure Python heuristics) and version <strong>0.11.0</strong> brings <strong>Prompt Injection Detection</strong> (5 LLM text detectors with optional file scanning for images, PDF, and Office documents). These join the existing v0.10 modules: <strong>WebAuthn / Passkeys, Redis Sentinel & Cluster, Webhook Dead-Letter Queue, Session Idle Timeout</strong> and <strong>47 security fixes</strong>.
+    Version <strong>0.13.0</strong> delivers <strong>XXE Protection</strong> (XML External Entity attack detection with regex pre-scanning and optional defusedxml support) and <strong>OIDC Discovery</strong> (RFC 8414 provider metadata client). These join the existing v0.12 modules: <strong>Malware Scanning</strong> (9 heuristic detectors, zero external AV), <strong>Prompt Injection Detection</strong> (5 LLM detectors, file scanning), and v0.10 features: <strong>WebAuthn / Passkeys, Redis Sentinel & Cluster, Webhook Dead-Letter Queue, Session Idle Timeout</strong> and <strong>47 security fixes</strong>.
   </p>
 
   <div class="not-prose grid grid-cols-1 sm:grid-cols-2 gap-3 my-6">
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.13.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">XXE Protection — 3-stage XML scanning, zero required deps, ASGI middleware + per-endpoint guards</p>
+    </div>
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.13.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">OIDC Discovery — RFC 8414 provider metadata client, in-memory TTL cache</p>
+    </div>
     <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
       <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.12.0</span>
       <p class="text-xs text-text-secondary mt-1 leading-relaxed">Malware Scanning — 9 heuristic detectors, archive bomb protection, zero external AV</p>
@@ -43,6 +51,64 @@ import '../styles/global.css';
       <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.9.0</span>
       <p class="text-xs text-text-secondary mt-1 leading-relaxed">MFA, RBAC, OAuth2/OIDC, PostgreSQL pool</p>
     </div>
+  </div>
+
+  <!-- v0.13.0 -->
+  <h2 id="v0130">v0.13.0 — XXE Protection & OIDC Discovery</h2>
+
+  <h3 id="v0130-xxe">XXE Protection</h3>
+  <p>
+    Araxys <strong>XXE Protection</strong> detects and blocks XML External Entity attacks — including billion-laughs entity expansion, file disclosure via SYSTEM entities, SSRF via external entities, and DTD-based attacks. The module uses a <strong>3-stage scanning strategy</strong> with <strong>zero required external dependencies</strong>:
+  </p>
+  <ul>
+    <li><strong>Regex pre-scan</strong>: Catches <code>&lt;!DOCTYPE</code>, <code>&lt;!ENTITY</code>, <code>SYSTEM</code>, and <code>PUBLIC</code> patterns before any parser touches the input</li>
+    <li><strong>defusedxml (optional)</strong>: When installed (<code>araxys[xxe]</code>), provides parser-level protection with automatic fallback</li>
+    <li><strong>stdlib fallback</strong>: <code>xml.etree.ElementTree</code> on pre-validated XML (safe because the pre-scan already blocked dangerous declarations)</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> AraxysConfig
+<span class="token-keyword">from</span> araxys.core.config <span class="token-keyword">import</span> XXEConfig
+
+config = <span class="token-function">AraxysConfig</span>(
+    <span class="token-param">secret_key</span>=<span class="token-string">"your-32-char-secret-key-here!!!!"</span>,
+    <span class="token-param">xxe</span>=<span class="token-function">XXEConfig</span>(
+        <span class="token-param">forbid_dtd</span>=<span class="token-bool">True</span>,
+        <span class="token-param">forbid_entities</span>=<span class="token-bool">True</span>,
+        <span class="token-param">forbid_external</span>=<span class="token-bool">True</span>,
+    ),
+)`} /></pre>
+  </div>
+
+  <h3 id="v0130-oidc">OIDC Discovery (RFC 8414)</h3>
+  <p>
+    Araxys <strong>OIDC Discovery</strong> client fetches, validates, and caches OpenID Connect provider metadata from the well-known endpoint. Instead of hardcoding authorization, token, and JWKS endpoints, provide just the <code>issuer_url</code> and Araxys discovers the rest automatically:
+  </p>
+  <ul>
+    <li><strong>RFC 8414 compliant</strong>: Validates <code>issuer</code>, <code>authorization_endpoint</code>, <code>token_endpoint</code>, and <code>jwks_uri</code> as required fields</li>
+    <li><strong>In-memory TTL cache</strong>: Configurable cache TTL (default 5 minutes) reduces network requests</li>
+    <li><strong>OIDCDiscoveryError</strong>: Raised on network, timeout, or parse failures with the <code>issuer_url</code> context</li>
+    <li><strong>Zero extra deps</strong>: Uses httpx, which is already a core Araxys dependency</li>
+  </ul>
+
+  <div class="code-block">
+    <div class="code-block-header">
+      <span class="code-block-lang">python</span>
+      <button class="code-block-copy">Copy</button>
+    </div>
+    <pre><code set:html={`<span class="token-keyword">from</span> araxys <span class="token-keyword">import</span> OIDCDiscoveryClient
+
+client = <span class="token-function">OIDCDiscoveryClient</span>()
+metadata = <span class="token-keyword">await</span> client.<span class="token-function">discover</span>(<span class="token-string">"https://accounts.google.com"</span>)
+
+<span class="token-builtin">print</span>(metadata.<span class="token-param">authorization_endpoint</span>)
+<span class="token-comment"># https://accounts.google.com/o/oauth2/v2/auth</span>
+<span class="token-builtin">print</span>(metadata.<span class="token-param">token_endpoint</span>)
+<span class="token-comment"># https://oauth2.googleapis.com/token</span>`} /></pre>
   </div>
 
   <!-- v0.12.0 -->

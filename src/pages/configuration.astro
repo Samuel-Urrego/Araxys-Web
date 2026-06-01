@@ -59,6 +59,8 @@ import '../styles/global.css';
       <tr><td><code>prompt_injection</code></td><td><code>PromptInjectionConfig | None</code></td><td><code>None</code></td><td>—</td><td>Prompt Injection Detection settings (v0.11)</td></tr>
       <tr><td><code>scan_files</code></td><td><code>FileScanConfig | None</code></td><td><code>None</code></td><td>—</td><td>File scan settings for prompt injection (v0.11)</td></tr>
       <tr><td><code>malware</code></td><td><code>MalwareConfig | None</code></td><td><code>None</code></td><td>—</td><td>Malware Scanning settings (v0.12)</td></tr>
+      <tr><td><code>xxe</code></td><td><code>XXEConfig | None</code></td><td><code>None</code></td><td>—</td><td>XXE Protection settings — forbid_dtd, forbid_entities, forbid_external (v0.13)</td></tr>
+      <tr><td><code>oidc_discovery</code></td><td><code>OIDCDiscoveryConfig | None</code></td><td><code>None</code></td><td>—</td><td>OIDC Discovery settings — cache_ttl, timeout, verify_ssl (v0.13)</td></tr>
     </tbody>
   </table>
 
@@ -79,6 +81,8 @@ import '../styles/global.css';
     AuditConfig,
     PromptInjectionConfig,
     MalwareConfig,
+    XXEConfig,
+    OIDCDiscoveryConfig,
 )
 
 config = <span class="token-function">AraxysConfig</span>(
@@ -229,6 +233,8 @@ config = <span class="token-function">AraxysConfig</span>(
       <tr><td><code>PromptInjectionConfig</code></td><td>Prompt Injection (v0.11)</td><td><code>enabled</code>, <code>detectors</code>, <code>threshold</code>, <code>file_scan</code></td></tr>
       <tr><td><code>FileScanConfig</code></td><td>Prompt Injection File Scan (v0.11)</td><td><code>enabled</code>, <code>scan_images</code>, <code>scan_pdf</code>, <code>scan_office</code></td></tr>
       <tr><td><code>MalwareConfig</code></td><td>Malware Scanning (v0.12)</td><td><code>enabled</code>, <code>detectors</code>, <code>archive_bomb_max_ratio</code></td></tr>
+      <tr><td><code>XXEConfig</code></td><td>XXE Protection (v0.13)</td><td><code>forbid_dtd</code>, <code>forbid_entities</code>, <code>forbid_external</code></td></tr>
+      <tr><td><code>OIDCDiscoveryConfig</code></td><td>OIDC Discovery (v0.13)</td><td><code>cache_ttl_seconds</code>, <code>timeout_seconds</code>, <code>verify_ssl</code></td></tr>
     </tbody>
   </table>
 
