@@ -61,6 +61,11 @@ import '../styles/global.css';
       <tr><td><code>malware</code></td><td><code>MalwareConfig | None</code></td><td><code>None</code></td><td>—</td><td>Malware Scanning settings (v0.12)</td></tr>
       <tr><td><code>xxe</code></td><td><code>XXEConfig | None</code></td><td><code>None</code></td><td>—</td><td>XXE Protection settings — forbid_dtd, forbid_entities, forbid_external (v0.13)</td></tr>
       <tr><td><code>oidc_discovery</code></td><td><code>OIDCDiscoveryConfig | None</code></td><td><code>None</code></td><td>—</td><td>OIDC Discovery settings — cache_ttl, timeout, verify_ssl (v0.13)</td></tr>
+      <tr><td><code>aws_waf</code></td><td><code>AWSWAFConfig | None</code></td><td><code>None</code></td><td>—</td><td>AWS WAF Bridge settings — generate, apply, escalation (v0.14)</td></tr>
+      <tr><td><code>threat_intel</code></td><td><code>ThreatIntelConfig | None</code></td><td><code>None</code></td><td>—</td><td>Threat Intelligence Feeds settings — feeds, cache_ttl, refresh_interval (v0.14)</td></tr>
+      <tr><td><code>graphql</code></td><td><code>GraphQLConfig | None</code></td><td><code>None</code></td><td>—</td><td>GraphQL Security settings — depth_limit, breadth_limit, cost_limit (v0.14)</td></tr>
+      <tr><td><code>headers_audit</code></td><td><code>HeadersAuditConfig | None</code></td><td><code>None</code></td><td>—</td><td>Security Headers Audit settings — sample_rate, checks (v0.14)</td></tr>
+      <tr><td><code>secrets_rotation</code></td><td><code>SecretsRotationConfig | None</code></td><td><code>None</code></td><td>—</td><td>Dynamic Secrets Rotation settings — interval, targets (v0.14)</td></tr>
     </tbody>
   </table>
 
@@ -235,6 +240,11 @@ config = <span class="token-function">AraxysConfig</span>(
       <tr><td><code>MalwareConfig</code></td><td>Malware Scanning (v0.12)</td><td><code>enabled</code>, <code>detectors</code>, <code>archive_bomb_max_ratio</code></td></tr>
       <tr><td><code>XXEConfig</code></td><td>XXE Protection (v0.13)</td><td><code>forbid_dtd</code>, <code>forbid_entities</code>, <code>forbid_external</code></td></tr>
       <tr><td><code>OIDCDiscoveryConfig</code></td><td>OIDC Discovery (v0.13)</td><td><code>cache_ttl_seconds</code>, <code>timeout_seconds</code>, <code>verify_ssl</code></td></tr>
+      <tr><td><code>AWSWAFConfig</code></td><td>AWS WAF Bridge (v0.14)</td><td><code>enabled</code>, <code>dry_run</code>, <code>escalation_threshold</code></td></tr>
+      <tr><td><code>ThreatIntelConfig</code></td><td>Threat Intel (v0.14)</td><td><code>feeds</code>, <code>cache_ttl_seconds</code>, <code>refresh_interval_minutes</code></td></tr>
+      <tr><td><code>GraphQLConfig</code></td><td>GraphQL Security (v0.14)</td><td><code>depth_limit</code>, <code>breadth_limit</code>, <code>cost_limit</code></td></tr>
+      <tr><td><code>HeadersAuditConfig</code></td><td>Headers Audit (v0.14)</td><td><code>sample_rate</code>, <code>checks</code>, <code>cli_output</code></td></tr>
+      <tr><td><code>SecretsRotationConfig</code></td><td>Secrets Rotation (v0.14)</td><td><code>rotation_interval</code>, <code>targets</code>, <code>admin_api</code></td></tr>
     </tbody>
   </table>
 

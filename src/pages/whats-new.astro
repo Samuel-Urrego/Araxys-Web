@@ -3,14 +3,34 @@ import DocsLayout from '../layouts/DocsLayout.astro';
 import '../styles/global.css';
 ---
 
-<DocsLayout title="What's New" activeNav="whats-new" description="What's new in Araxys v0.13 — XXE Protection, OIDC Discovery, Malware Scanning, Prompt Injection Detection, and more.">
+<DocsLayout title="What's New" activeNav="whats-new" description="What's new in Araxys v0.14 — AWS WAF Bridge, Threat Intelligence, GraphQL Security, Headers Audit, Secrets Rotation.">
 
-  <h2 id="overview">Araxys v0.13 — XXE Protection & OIDC Discovery</h2>
+  <h2 id="overview-v014">v0.14.0 — AWS WAF Bridge, Threat Intelligence, GraphQL, Headers Audit, Secrets Rotation</h2>
   <p>
-    Version <strong>0.13.0</strong> delivers <strong>XXE Protection</strong> (XML External Entity attack detection with regex pre-scanning and optional defusedxml support) and <strong>OIDC Discovery</strong> (RFC 8414 provider metadata client). These join the existing v0.12 modules: <strong>Malware Scanning</strong> (9 heuristic detectors, zero external AV), <strong>Prompt Injection Detection</strong> (5 LLM detectors, file scanning), and v0.10 features: <strong>WebAuthn / Passkeys, Redis Sentinel & Cluster, Webhook Dead-Letter Queue, Session Idle Timeout</strong> and <strong>47 security fixes</strong>.
+    Version <strong>0.14.0</strong> delivers five major new security modules: <strong>AWS WAF Bridge</strong> (OpenAPI→WAF rule generation, boto3 apply, multi-strike escalation), <strong>Threat Intelligence Feeds</strong> (8 feed sources, IPResolver, background scheduler), <strong>GraphQL Security</strong> (4 validators including depth/breadth/cost limits, ASGI middleware), <strong>Security Headers Audit</strong> (9 OWASP checks, sampling middleware), and <strong>Dynamic Secrets Rotation</strong> (background Task loop, pool hot-swap, Admin API). Also includes 1958 tests, mypy strict mode, and Ruff clean across the entire codebase.
   </p>
 
   <div class="not-prose grid grid-cols-1 sm:grid-cols-2 gap-3 my-6">
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.14.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">AWS WAF Bridge — OpenAPI→WAF rules, boto3 apply, multi-strike escalation, CLI</p>
+    </div>
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.14.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">Threat Intelligence Feeds — 8 feed sources, IPResolver, background scheduler, CLI</p>
+    </div>
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.14.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">GraphQL Security — 4 validators (depth/breadth/cost limit, introspection disable), ASGI middleware</p>
+    </div>
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.14.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">Security Headers Audit — 9 OWASP checks, sampling middleware, CLI</p>
+    </div>
+    <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
+      <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.14.0</span>
+      <p class="text-xs text-text-secondary mt-1 leading-relaxed">Dynamic Secrets Rotation — background Task loop, pool hot-swap, Admin API, CLI</p>
+    </div>
     <div class="p-4 rounded-lg border border-primary/20 bg-primary/5">
       <span class="text-[10px] uppercase tracking-widest text-primary-soft font-semibold">v0.13.0</span>
       <p class="text-xs text-text-secondary mt-1 leading-relaxed">XXE Protection — 3-stage XML scanning, zero required deps, ASGI middleware + per-endpoint guards</p>
@@ -52,6 +72,67 @@ import '../styles/global.css';
       <p class="text-xs text-text-secondary mt-1 leading-relaxed">MFA, RBAC, OAuth2/OIDC, PostgreSQL pool</p>
     </div>
   </div>
+
+  <!-- v0.14.0 -->
+  <h2 id="v0140">v0.14.0 — Five New Modules</h2>
+
+  <h3 id="v0140-waf">AWS WAF Bridge</h3>
+  <p>
+    Araxys <strong>AWS WAF Bridge</strong> generates AWS WAF rules directly from your OpenAPI specifications. Instead of manually writing WAF rules and keeping them in sync with your API, the bridge reads your OpenAPI schema and produces WAF rules that match your endpoints:
+  </p>
+  <ul>
+    <li><strong>Schema-driven rule generation</strong>: Parses OpenAPI 3.x specs and generates rate-based, IP-based, and SQLi/XSS inspection rules matching your actual API surface</li>
+    <li><strong>boto3 apply</strong>: Directly applies generated rules to your AWS WAF Web ACL using boto3 — no manual AWS Console clicks</li>
+    <li><strong>Multi-strike escalation</strong>: Configurable escalation chain that moves from COUNT→BLOCK after repeated violations within a time window</li>
+    <li><strong>CLI integration</strong>: <code>araxys waf generate</code> and <code>araxys waf apply</code> commands for CI/CD pipelines</li>
+  </ul>
+
+  <h3 id="v0140-threat-intel">Threat Intelligence Feeds</h3>
+  <p>
+    Araxys <strong>Threat Intelligence Feeds</strong> imports, normalizes, and resolves IP reputation from 8 external threat intelligence sources. The <code>IPResolver</code> answers "should I trust this IP?" before your application processes the request:
+  </p>
+  <ul>
+    <li><strong>8 feed sources</strong>: AlienVault OTX, AbuseIPDB, Blocklist.de, Cisco Talos, Emerging Threats, FireHOL, Spamhaus DROP, and Tor Exit Nodes</li>
+    <li><strong>IPResolver</strong>: Unified query interface that aggregates reputation scores across all configured feeds with configurable confidence thresholds</li>
+    <li><strong>Background scheduler</strong>: Automatically refreshes feed data on configurable intervals — no cron jobs needed</li>
+    <li><strong>CLI</strong>: <code>araxys threatintel lookup &lt;ip&gt;</code>, <code>araxys threatintel refresh</code>, <code>araxys threatintel feeds</code> for debugging and manual inspection</li>
+  </ul>
+
+  <h3 id="v0140-graphql">GraphQL Security</h3>
+  <p>
+    Araxys <strong>GraphQL Security</strong> protects your GraphQL endpoints from resource exhaustion and information disclosure attacks. It uses <code>graphql-core</code> AST analysis to enforce limits BEFORE query execution:
+  </p>
+  <ul>
+    <li><strong>4 validators</strong>: Depth limit (max query nesting), Breadth limit (max selections per level), Cost limit (weighted complexity analysis), and Introspection disable (block schema introspection in production)</li>
+    <li><strong>graphql-core AST</strong>: Validates queries at the AST level — no regex hacks, no string matching</li>
+    <li><strong>ASGI middleware</strong>: Integrates at the ASGI layer, blocking malicious queries before they reach your resolvers</li>
+  </ul>
+
+  <h3 id="v0140-headers-audit">Security Headers Audit</h3>
+  <p>
+    Araxys <strong>Security Headers Audit</strong> scans your application's HTTP response headers against 9 OWASP-recommended security checks. Use it in CI or as a sampling middleware to catch missing headers before attackers do:
+  </p>
+  <ul>
+    <li><strong>9 OWASP checks</strong>: HSTS, CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Embedder-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy</li>
+    <li><strong>Sampling middleware</strong>: Configure a sample rate (e.g., 5% of responses) to audit headers in production without performance impact</li>
+    <li><strong>CLI</strong>: <code>araxys headers audit &lt;url&gt;</code> for ad-hoc and CI pipeline checks</li>
+  </ul>
+
+  <h3 id="v0140-secrets-rotation">Dynamic Secrets Rotation</h3>
+  <p>
+    Araxys <strong>Dynamic Secrets Rotation</strong> automatically rotates database credentials, API keys, and other secrets on a configurable schedule without downtime — using a hot-swap pattern that replaces the active secret while the old one remains valid during a transition window:
+  </p>
+  <ul>
+    <li><strong>Background Task loop</strong>: Runs on configurable <code>rotation_interval</code> — generates new secrets, stores them, and triggers the hot-swap</li>
+    <li><strong>Pool hot-swap</strong>: Connection pools are atomically replaced with new credentials — existing connections drain gracefully while new connections use the rotated secret</li>
+    <li><strong>Admin API</strong>: <code>POST /admin/secrets/rotate</code> for on-demand rotation, <code>GET /admin/secrets/status</code> for rotation history</li>
+    <li><strong>CLI</strong>: <code>araxys secrets rotate</code>, <code>araxys secrets status</code>, <code>araxys secrets audit</code></li>
+  </ul>
+
+  <h3 id="v0140-testing">Testing</h3>
+  <p>
+    v0.14.0 ships with <strong>1958 tests</strong>, <strong>mypy strict</strong> mode enabled across all source files, and <strong>Ruff clean</strong> — zero linter warnings. Every new module includes comprehensive unit tests, integration tests, and edge-case coverage.
+  </p>
 
   <!-- v0.13.0 -->
   <h2 id="v0130">v0.13.0 — XXE Protection & OIDC Discovery</h2>

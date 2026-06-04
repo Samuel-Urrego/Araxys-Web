@@ -544,9 +544,13 @@ body {
     -webkit-overflow-scrolling: touch;
   }
 
-  .prose thead th,
-  .prose tbody td {
+  .prose thead th {
     white-space: nowrap;
+    padding: 0.6rem 0.75rem;
+    font-size: 13px;
+  }
+
+  .prose tbody td {
     padding: 0.6rem 0.75rem;
     font-size: 13px;
   }
