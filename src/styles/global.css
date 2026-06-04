@@ -185,6 +185,10 @@ body {
    PROSE CONTENT STYLES (documentation)
    ============================================ */
 
+.prose {
+  overflow-x: hidden;
+}
+
 .prose h2 {
   font-family: var(--font-headline);
   font-size: 28px;
