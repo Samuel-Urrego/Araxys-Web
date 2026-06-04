@@ -263,33 +263,6 @@ const navSections = [
   </style>
 
   <script>
-    // --- DEBUG: Find overflowing elements ---
-    (function debugOverflow() {
-      const vw = window.innerWidth;
-      const offenders = [];
-      document.querySelectorAll('*').forEach(el => {
-        const rect = el.getBoundingClientRect();
-        if (rect.right > vw + 2 || rect.left < -2) {
-          const tag = el.tagName.toLowerCase();
-          const cls = el.className?.toString()?.slice(0, 60) || '';
-          const id = el.id ? '#' + el.id : '';
-          const extra = Math.max(0, rect.right - vw).toFixed(0);
-          offenders.push({ tag, cls, id, extra });
-          el.style.outline = '3px solid red';
-        }
-      });
-      if (offenders.length) {
-        console.group('%c⚠️ OVERFLOW DEBUG', 'color:red;font-size:16px');
-        console.log('Viewport width:', vw + 'px');
-        offenders.forEach(o => {
-          console.log(`%c+${o.extra}px | <${o.tag}${o.id}> .${o.cls}`, 'color:red');
-        });
-        console.groupEnd();
-      } else {
-        console.log('%c✅ No overflow found', 'color:green');
-      }
-    })();
-
     // --- Search Logic & Pagefind Integration ---
     let pagefind: any;
     const searchModal = document.getElementById('search-modal');
