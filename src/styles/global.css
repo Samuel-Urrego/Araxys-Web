@@ -536,12 +536,16 @@ body {
     line-height: 1.65;
   }
 
-  /* Scrollable tables — critical for config/detector tables */
+  /* Tables — force fixed layout so content NEVER expands beyond viewport */
   .prose table {
-    display: block;
     width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    table-layout: fixed;
+  }
+
+  .prose tbody td,
+  .prose tbody th {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
   }
 
   .prose thead th {
