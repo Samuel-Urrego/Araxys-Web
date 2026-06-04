@@ -318,6 +318,12 @@ body {
    CODE BLOCKS
    ============================================ */
 
+/* Flexbox fix: prevent flex items from expanding beyond their container 
+   based on child intrinsic width. Without this, flex-1 doesn't truly shrink. */
+.flex-1 {
+  min-width: 0;
+}
+
 .code-block {
   position: relative;
   background-color: var(--color-code-bg);
